@@ -30,7 +30,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn-small { font-size: 11px; padding: 5px 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; white-space: nowrap; }
 .btn-small:hover { background: #f0f0f0; }
 .btn-primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-.btn-vmp { background: #e8f4e8; color: #1a6a1a; border-color: #a8d4a8; }
 .btn-backup { background: #e8f0fe; color: #1a56b0; border-color: #b8d0f9; }
 .section-label { font-size: 10px; font-weight: 600; color: #aaa; letter-spacing: 0.08em; text-transform: uppercase; margin: 1.25rem 0 8px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; }
@@ -74,22 +73,12 @@ textarea.tasting-note { width: 100%; font-size: 12px; padding: 8px 9px; border-r
 .action-btn:hover { background: #f5f5f5; }
 .action-btn.green { background: #DFF0D8; color: #2d6a2d; border-color: #b2d9a8; }
 .action-btn.red   { background: #FDECEA; color: #a32d2d; border-color: #f7c1c1; }
-.action-btn.info  { background: #e8f0fe; color: #1a56b0; border-color: #b8d0f9; }
+.action-btn.blue  { background: #e8f0fe; color: #1a56b0; border-color: #b8d0f9; }
 .dismiss-warning { background: #FDECEA; border: 1px solid #f7c1c1; border-radius: 7px; padding: 8px 10px; font-size: 11px; color: #a32d2d; margin-bottom: 8px; display: flex; gap: 7px; }
 .note-saved { font-size: 10px; color: #2d6a2d; margin-top: 3px; }
-.vmp-search-box { background: #fff; border-radius: 14px; width: 100%; max-width: 500px; max-height: 82vh; overflow-y: auto; box-shadow: 0 16px 50px rgba(0,0,0,0.25); display: flex; flex-direction: column; }
-.vmp-search-header { padding: 0.9rem 1.1rem 0.7rem; border-bottom: 1px solid #eee; }
-.vmp-search-header h3 { font-size: 15px; font-weight: 600; margin-bottom: 7px; color: #1a1a1a; }
-.vmp-search-input-row { display: flex; gap: 7px; }
-.vmp-search-input-row input { flex: 1; font-size: 13px; padding: 7px 11px; border: 1px solid #ddd; border-radius: 7px; outline: none; font-family: inherit; }
-.vmp-results { padding: 6px 0; flex: 1; overflow-y: auto; }
-.vmp-result-item { display: flex; align-items: center; gap: 10px; padding: 9px 1.1rem; cursor: pointer; transition: background 0.12s; border-bottom: 1px solid #f5f5f5; }
-.vmp-result-item:hover { background: #f9f8f5; }
-.vmp-result-img { width: 40px; height: 55px; object-fit: contain; background: #f5f5f5; border-radius: 3px; flex-shrink: 0; }
-.vmp-result-name { font-size: 12px; font-weight: 600; color: #1a1a1a; line-height: 1.3; }
-.vmp-result-meta { font-size: 10px; color: #888; margin-top: 2px; }
-.vmp-result-price { font-size: 12px; font-weight: 600; color: #1a1a1a; white-space: nowrap; }
-.vmp-loading { padding: 1.5rem; text-align: center; color: #aaa; font-size: 12px; }
+.edit-form-section { border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 6px; }
+.edit-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 7px; }
+.edit-row input, .edit-row select, .edit-row textarea { flex: 1; min-width: 100px; font-size: 12px; padding: 6px 9px; border: 1px solid #ddd; border-radius: 7px; font-family: inherit; outline: none; background: #fff; }
 .add-form { background: #f9f8f5; border-radius: 10px; border: 1px solid #e5e5e5; padding: 0.9rem 1.1rem; margin-bottom: 1.25rem; }
 .add-form h3 { font-size: 13px; font-weight: 600; margin-bottom: 9px; color: #1a1a1a; }
 .form-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 7px; }
@@ -101,6 +90,7 @@ code { background: #eee; padding: 1px 4px; border-radius: 3px; font-size: 10px; 
 </style>
 </head>
 <body>
+
 <!-- SETUP SCREEN -->
 <div id="setup-screen" style="display:none;position:fixed;inset:0;background:#f5f4f0;z-index:2000;align-items:center;justify-content:center;padding:1rem">
   <div style="background:#fff;border-radius:16px;border:1px solid #e5e5e5;width:100%;max-width:420px;padding:2rem;box-shadow:0 8px 32px rgba(0,0,0,0.12)">
@@ -134,11 +124,9 @@ code { background: #eee; padding: 1px 4px; border-radius: 3px; font-size: 10px; 
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
       <span id="sync-badge" class="sync-status sync-off">⏳ Laster...</span>
-      <button class="btn-small btn-primary" onclick="updateAllPrices()">↻ Oppdater priser</button>
       <button class="btn-small btn-backup" onclick="downloadBackup()">⬇ Backup</button>
-      <button class="btn-small" onclick="openSettings()" title="JSONBin innstillinger">⚙</button>
-      <button class="btn-small" onclick="toggleManualForm()">+ Legg til manuelt</button>
-
+      <button class="btn-small" onclick="openSettings()" title="Innstillinger">⚙</button>
+      <button class="btn-small btn-primary" onclick="toggleManualForm()">+ Legg til vin</button>
     </div>
   </div>
 
@@ -181,219 +169,134 @@ code { background: #eee; padding: 1px 4px; border-radius: 3px; font-size: 10px; 
   <div id="wine-list"></div>
   <div id="modal-container"></div>
 </div>
+</div><!-- /app-root -->
 
 <script>
 /* ── CONFIG ── */
-const LS_KEY        = 'vinbibliotek_wines_v1';
-const LS_PENDING    = 'vinbibliotek_pending_v1';
-const LS_SETUP      = 'vinbibliotek_setup_v1';
+const LS_KEY    = 'vinbibliotek_wines_v1';
+const LS_PENDING= 'vinbibliotek_pending_v1';
+const LS_SETUP  = 'vinbibliotek_setup_v1';
 
-function getConfig() {
-  try { return JSON.parse(localStorage.getItem(LS_SETUP)) || {}; } catch(e) { return {}; }
-}
-function getBinUrl() {
-  const id = getConfig().binId;
-  return id ? `https://api.jsonbin.io/v3/b/${id}` : null;
-}
-function getAccessKey() { return getConfig().accessKey || null; }
-function isConfigured() { const c=getConfig(); return !!(c.binId && c.accessKey); }
+function getConfig(){ try{ return JSON.parse(localStorage.getItem(LS_SETUP))||{}; }catch(e){ return {}; } }
+function getBinUrl(){ const id=getConfig().binId; return id?`https://api.jsonbin.io/v3/b/${id}`:null; }
+function getAccessKey(){ return getConfig().accessKey||null; }
+function isConfigured(){ const c=getConfig(); return !!(c.binId&&c.accessKey); }
 
 const VMP_IMG = 'https://bilder.vinmonopolet.no/cache/300x300-0/';
 const VIV_IMG = 'https://images.vivino.com/thumbs/';
-const VMP_API = 'https://apis.vinmonopolet.no/products/v0/details-normal';
 
 /* ── STATE ── */
-let wines        = [];
-let pendingSync  = {}; // { wineId: wineObject } — changes waiting to sync
-let activeTypes  = new Set();
-let activeStatuses = new Set();
-let showManual   = false;
-let selectedId   = null;
-let editRating   = 0;
-let vmpSearchTimer = null;
-let isSyncing    = false;
+let wines=[], activeTypes=new Set(), activeStatuses=new Set();
+let showManual=false, selectedId=null, editRating=0, isSyncing=false;
 
-/* ══════════════════════════════════════════
-   SYNC ENGINE — per-wine merge strategy
-══════════════════════════════════════════ */
-
-function setSyncBadge(state, text) {
-  const el = document.getElementById('sync-badge');
-  if (!el) return;
-  el.className = 'sync-status sync-' + state;
-  el.textContent = text;
-}
-
-/* Load wines from localStorage (offline buffer) */
-function loadLocal() {
-  try {
-    const r = localStorage.getItem(LS_KEY);
-    wines = r ? JSON.parse(r) : [];
-    const p = localStorage.getItem(LS_PENDING);
-    pendingSync = p ? JSON.parse(p) : {};
-  } catch(e) {
-    wines = []; pendingSync = {};
+/* ══ SETUP ══ */
+function showSetupScreen(){ document.getElementById('app-root').style.display='none'; document.getElementById('setup-screen').style.display='flex'; }
+function hideSetupScreen(){ document.getElementById('setup-screen').style.display='none'; document.getElementById('app-root').style.display='block'; }
+async function saveSetup(){
+  const binId=document.getElementById('setup-bin-id').value.trim();
+  const accessKey=document.getElementById('setup-access-key').value.trim();
+  const err=document.getElementById('setup-error');
+  if(!binId||!accessKey){ err.textContent='Begge feltene er påkrevd.'; return; }
+  err.textContent='';
+  document.getElementById('setup-btn').textContent='Tester...';
+  try{
+    const res=await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{headers:{'X-Access-Key':accessKey}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    localStorage.setItem(LS_SETUP,JSON.stringify({binId,accessKey}));
+    hideSetupScreen(); await bootApp();
+  }catch(e){
+    document.getElementById('setup-btn').textContent='Lagre og koble til';
+    err.textContent='⚠ Kunne ikke koble til JSONBin. Sjekk ID og nøkkel.';
   }
 }
-
-/* Save wines to localStorage */
-function saveLocal() {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(wines));
-    localStorage.setItem(LS_PENDING, JSON.stringify(pendingSync));
-  } catch(e) {}
+function openSettings(){
+  const c=getConfig();
+  document.getElementById('setup-bin-id').value=c.binId||'';
+  document.getElementById('setup-access-key').value=c.accessKey||'';
+  document.getElementById('setup-error').textContent='';
+  document.getElementById('setup-btn').textContent='Lagre og koble til';
+  showSetupScreen();
 }
 
-/* Fetch all wines from JSONBin */
-async function fetchCloud() {
-  const url = getBinUrl(); const key = getAccessKey();
-  if (!url || !key) throw new Error('Ikke konfigurert');
-  const res = await fetch(url + '/latest', { headers: { 'X-Access-Key': key } });
-  if (!res.ok) throw new Error('Fetch failed: ' + res.status);
-  const data = await res.json();
-  return Array.isArray(data.record) ? data.record : [];
+/* ══ SYNC ══ */
+function setSyncBadge(state,text){ const el=document.getElementById('sync-badge'); if(!el)return; el.className='sync-status sync-'+state; el.textContent=text; }
+function loadLocal(){ try{ const r=localStorage.getItem(LS_KEY); wines=r?JSON.parse(r):[]; }catch(e){ wines=[]; } }
+function saveLocal(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(wines)); }catch(e){} }
+
+async function fetchCloud(){
+  const url=getBinUrl(), key=getAccessKey();
+  if(!url||!key) throw new Error('Ikke konfigurert');
+  const res=await fetch(url+'/latest',{headers:{'X-Access-Key':key}});
+  if(!res.ok) throw new Error('Fetch failed: '+res.status);
+  const data=await res.json();
+  return Array.isArray(data.record)?data.record:[];
+}
+async function pushCloud(list){
+  const url=getBinUrl(), key=getAccessKey();
+  if(!url||!key) throw new Error('Ikke konfigurert');
+  const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json','X-Access-Key':key},body:JSON.stringify(list)});
+  if(!res.ok) throw new Error('Push failed: '+res.status);
+}
+function mergeWines(local,cloud){
+  const map={};
+  cloud.forEach(w=>map[w.id]={...w});
+  local.forEach(w=>{ if(!map[w.id]) map[w.id]={...w}; else if((w.updatedAt||0)>(map[w.id].updatedAt||0)) map[w.id]={...w}; });
+  return Object.values(map).sort((a,b)=>a.id-b.id);
+}
+async function syncWithCloud(){
+  if(isSyncing) return; isSyncing=true;
+  setSyncBadge('wait','⟳ Syncer...');
+  try{
+    const cloud=await fetchCloud();
+    if(wines.length===0&&cloud.length>0){ wines=cloud; saveLocal(); render(); setSyncBadge('ok','✓ Synkronisert'); isSyncing=false; return; }
+    const merged=mergeWines(wines,cloud);
+    if(JSON.stringify(merged)!==JSON.stringify(cloud)) await pushCloud(merged);
+    wines=merged; saveLocal(); render(); setSyncBadge('ok','✓ Synkronisert');
+  }catch(e){ setSyncBadge('err','⚠ Offline'); }
+  isSyncing=false;
+}
+async function saveWine(wine){
+  wine.updatedAt=Date.now();
+  const idx=wines.findIndex(w=>w.id===wine.id);
+  if(idx>=0) wines[idx]=wine; else wines.push(wine);
+  saveLocal(); render();
+  if(navigator.onLine) await syncWithCloud(); else setSyncBadge('wait','⏳ Venter på nett');
+}
+window.addEventListener('online',()=>syncWithCloud());
+window.addEventListener('offline',()=>setSyncBadge('wait','⏳ Offline'));
+
+/* ══ BACKUP ══ */
+function downloadBackup(){
+  const blob=new Blob([JSON.stringify(wines,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='vinbibliotek-backup-'+nowLabel()+'.json'; a.click();
 }
 
-/* Push full wine list to JSONBin */
-async function pushCloud(wineList) {
-  const url = getBinUrl(); const key = getAccessKey();
-  if (!url || !key) throw new Error('Ikke konfigurert');
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Access-Key': key },
-    body: JSON.stringify(wineList)
-  });
-  if (!res.ok) throw new Error('Push failed: ' + res.status);
+/* ══ FILTERS ══ */
+function toggleType(t){ activeTypes.has(t)?activeTypes.delete(t):activeTypes.add(t); updateToolbar(); render(); }
+function toggleStatus(s){ activeStatuses.has(s)?activeStatuses.delete(s):activeStatuses.add(s); updateToolbar(); render(); }
+function resetFilters(){ activeTypes.clear(); activeStatuses.clear(); document.getElementById('sort-by').value='default'; document.getElementById('search').value=''; updateToolbar(); render(); }
+function updateToolbar(){
+  ['white','rose','red'].forEach(t=>{ const b=document.getElementById('tb-'+t); b.className='toggle-btn'+(activeTypes.has(t)?' active-type-'+t:''); });
+  ['pending','recommended','dismissed'].forEach(s=>{ const b=document.getElementById('tb-'+s); b.className='toggle-btn'+(activeStatuses.has(s)?' active-status':''); });
 }
 
-/* Merge local + cloud per wine — last updatedAt wins */
-function mergeWines(local, cloud) {
-  const map = {};
-  // Start with cloud as base
-  cloud.forEach(w => map[w.id] = {...w});
-  // Overlay local wins where local is newer
-  local.forEach(w => {
-    if (!map[w.id]) {
-      map[w.id] = {...w}; // new local wine not yet in cloud
-    } else {
-      const localTs  = w.updatedAt  || 0;
-      const cloudTs  = map[w.id].updatedAt || 0;
-      if (localTs > cloudTs) map[w.id] = {...w};
-    }
-  });
-  return Object.values(map).sort((a,b) => a.id - b.id);
-}
-
-/* Full sync: fetch cloud, merge, push if changed, update local */
-async function syncWithCloud() {
-  if (isSyncing) return;
-  isSyncing = true;
-  setSyncBadge('wait', '⟳ Syncer...');
-  try {
-    const cloud = await fetchCloud();
-
-    // If local is completely empty and cloud has data → just load cloud (new device)
-    if (wines.length === 0 && cloud.length > 0) {
-      wines = cloud;
-      pendingSync = {};
-      saveLocal();
-      render();
-      setSyncBadge('ok', '✓ Synkronisert');
-      isSyncing = false;
-      return;
-    }
-
-    const merged = mergeWines(wines, cloud);
-    const changed = JSON.stringify(merged) !== JSON.stringify(cloud);
-
-    if (changed) {
-      await pushCloud(merged);
-    }
-
-    wines = merged;
-    pendingSync = {};
-    saveLocal();
-    render();
-    setSyncBadge('ok', '✓ Synkronisert');
-  } catch(e) {
-    setSyncBadge('err', '⚠ Offline');
-    console.warn('Sync failed, working offline:', e);
-  }
-  isSyncing = false;
-}
-
-/* Mark a wine as changed and sync if online */
-async function saveWine(wine) {
-  wine.updatedAt = Date.now();
-  const idx = wines.findIndex(w => w.id === wine.id);
-  if (idx >= 0) wines[idx] = wine; else wines.push(wine);
-  saveLocal();
-  render();
-  // Try to sync immediately
-  if (navigator.onLine) {
-    await syncWithCloud();
-  } else {
-    setSyncBadge('wait', '⏳ Venter på nett');
-  }
-}
-
-/* When coming back online — sync pending changes */
-window.addEventListener('online', () => {
-  setSyncBadge('wait', '⟳ Syncer...');
-  syncWithCloud();
-});
-window.addEventListener('offline', () => {
-  setSyncBadge('wait', '⏳ Offline — endringer lagres lokalt');
-});
-
-/* ── BACKUP ── */
-function downloadBackup() {
-  const json = JSON.stringify(wines, null, 2);
-  const blob = new Blob([json], {type: 'application/json'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = 'vinbibliotek-backup-' + nowLabel() + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/* ── FILTERS ── */
-function toggleType(t) { activeTypes.has(t)?activeTypes.delete(t):activeTypes.add(t); updateToolbar(); render(); }
-function toggleStatus(s) { activeStatuses.has(s)?activeStatuses.delete(s):activeStatuses.add(s); updateToolbar(); render(); }
-function resetFilters() {
-  activeTypes.clear(); activeStatuses.clear();
-  document.getElementById('sort-by').value = 'default';
-  document.getElementById('search').value  = '';
-  updateToolbar(); render();
-}
-function updateToolbar() {
-  ['white','rose','red'].forEach(t => {
-    const b = document.getElementById('tb-'+t);
-    b.className = 'toggle-btn' + (activeTypes.has(t) ? ' active-type-'+t : '');
-  });
-  ['pending','recommended','dismissed'].forEach(s => {
-    const b = document.getElementById('tb-'+s);
-    b.className = 'toggle-btn' + (activeStatuses.has(s) ? ' active-status' : '');
-  });
-}
-
-/* ── IMAGE ── */
-function imgAreaHTML(w, height) {
-  const vmpUrl = w.vmpId      ? VMP_IMG + w.vmpId + '-1.jpg' : null;
-  const vivUrl = w.vivinoHash ? VIV_IMG + w.vivinoHash + '_pb_x600.png' : null;
-  const iconSz = height > 180 ? 60 : 48;
-  const uid    = w.id + '-' + height;
-  const ph     = `<div id="ph-${uid}" style="display:none;align-items:center;justify-content:center;width:100%;height:100%">${typeIcon(w.type,iconSz)}</div>`;
-  const showPh = `document.getElementById('ph-${uid}').style.display='flex'`;
-  if (vmpUrl && vivUrl) return `<img src="${vmpUrl}" style="max-width:100%;max-height:${height}px;object-fit:contain;padding:7px" onerror="this.src='${vivUrl}';this.onerror=function(){this.style.display='none';${showPh}}" />${ph}`;
-  if (vmpUrl) return `<img src="${vmpUrl}" style="max-width:100%;max-height:${height}px;object-fit:contain;padding:7px" onerror="this.style.display='none';${showPh}" />${ph}`;
-  if (vivUrl) return `<img src="${vivUrl}" style="max-width:100%;max-height:${height}px;object-fit:contain;padding:7px" onerror="this.style.display='none';${showPh}" />${ph}`;
+/* ══ IMAGE ══ */
+function imgAreaHTML(w,height){
+  const vmpUrl=w.vmpId?VMP_IMG+w.vmpId+'-1.jpg':null;
+  const vivUrl=w.vivinoHash?VIV_IMG+w.vivinoHash+'_pb_x600.png':null;
+  const iconSz=height>180?60:48;
+  const uid=w.id+'-'+height;
+  const ph=`<div id="ph-${uid}" style="display:none;align-items:center;justify-content:center;width:100%;height:100%">${typeIcon(w.type,iconSz)}</div>`;
+  const showPh=`document.getElementById('ph-${uid}').style.display='flex'`;
+  if(vmpUrl&&vivUrl) return `<img src="${vmpUrl}" style="max-width:100%;max-height:${height}px;object-fit:contain;padding:7px" onerror="this.src='${vivUrl}';this.onerror=function(){this.style.display='none';${showPh}}" />${ph}`;
+  if(vmpUrl) return `<img src="${vmpUrl}" style="max-width:100%;max-height:${height}px;object-fit:contain;padding:7px" onerror="this.style.display='none';${showPh}" />${ph}`;
+  if(vivUrl) return `<img src="${vivUrl}" style="max-width:100%;max-height:${height}px;object-fit:contain;padding:7px" onerror="this.style.display='none';${showPh}" />${ph}`;
   return `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%">${typeIcon(w.type,iconSz)}</div>`;
 }
 
-/* ── DICE ── */
-function diceSVG(n,sz=18) {
+/* ══ DICE ══ */
+function diceSVG(n,sz=18){
   const dp={1:[[.5,.5]],2:[[.3,.3],[.7,.7]],3:[[.3,.3],[.5,.5],[.7,.7]],4:[[.3,.3],[.7,.3],[.3,.7],[.7,.7]],5:[[.3,.3],[.7,.3],[.5,.5],[.3,.7],[.7,.7]],6:[[.3,.25],[.7,.25],[.3,.5],[.7,.5],[.3,.75],[.7,.75]]};
   const face=dp[Math.min(6,Math.max(1,Math.round(n)))]||dp[1];
   const r=Math.round(sz*0.14),dr=Math.round(sz*0.09);
@@ -401,7 +304,7 @@ function diceSVG(n,sz=18) {
   return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect x="1" y="1" width="${sz-2}" height="${sz-2}" rx="${r}" fill="#fff" stroke="#ccc" stroke-width="1.2"/>${dots}</svg>`;
 }
 
-/* ── TYPE ICONS ── */
+/* ══ TYPE ICONS ══ */
 function whiteGlassIcon(sz){return `<svg width="${sz}" height="${sz}" viewBox="0 0 20 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 2 C6 5 5.5 8 6.5 11 C7.2 13.2 8.5 14.5 10 14.5 C11.5 14.5 12.8 13.2 13.5 11 C14.5 8 14 5 13 2 Z" fill="#F5E840" stroke="#A89010" stroke-width="1"/><line x1="10" y1="14.5" x2="10" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="21" x2="13" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/></svg>`;}
 function roseGlassIcon(sz){return `<svg width="${sz}" height="${sz}" viewBox="0 0 20 24" xmlns="http://www.w3.org/2000/svg"><ellipse cx="10" cy="9" rx="7" ry="7" fill="#F4A0B0" stroke="#C0405A" stroke-width="1"/><path d="M3.5 9 Q4 13.5 10 14.5 Q16 13.5 16.5 9" fill="rgba(255,255,255,0.25)" stroke="none"/><path d="M6.5 2.5 Q8 4 10 4 Q12 4 13.5 2.5" fill="none" stroke="#C0405A" stroke-width="0.8"/><line x1="10" y1="16" x2="10" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="21" x2="13" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/></svg>`;}
 function redGlassIcon(sz){return `<svg width="${sz}" height="${sz}" viewBox="0 0 20 24" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 2 C3 5.5 4 9.5 6 12 C7.5 13.8 8.8 14.5 10 14.5 C11.2 14.5 12.5 13.8 14 12 C16 9.5 17 5.5 16.5 2 Z" fill="#C03030" stroke="#801818" stroke-width="1"/><path d="M3.5 2 Q5 6 10 6 Q15 6 16.5 2" fill="rgba(255,255,255,0.15)" stroke="none"/><line x1="10" y1="14.5" x2="10" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="21" x2="13" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/></svg>`;}
@@ -409,29 +312,43 @@ function typeIcon(t,sz=16){return t==='white'?whiteGlassIcon(sz):t==='rose'?rose
 function typeLabel(t){return {white:'Hvit',rose:'Rosé',red:'Rød'}[t]||t;}
 function typeHeading(t){return {white:'🥂 Hvite viner',rose:'🌸 Rosévin',red:'🍷 Rødviner'}[t]||t;}
 function scoreTag(w){return w.expertSource==='IT'?'IT':'GV';}
-function vmpTypeToLocal(t){if(!t)return 'red';const tl=t.toLowerCase();if(tl.includes('hvit')||tl.includes('white'))return 'white';if(tl.includes('ros'))return 'rose';return 'red';}
 function nowLabel(){const m=['JAN','FEB','MAR','APR','MAI','JUN','JUL','AUG','SEP','OKT','NOV','DES'][new Date().getMonth()];return m+String(new Date().getFullYear()).slice(2);}
-function nextId(){return wines.length ? Math.max(...wines.map(w=>w.id))+1 : 1;}
+function nextId(){return wines.length?Math.max(...wines.map(w=>w.id))+1:1;}
 
-/* ── DEFAULT TEST WINES ── */
+/* ══ DEFAULT WINES — alle 18 ══ */
 const defaultWines = [
-  { id:1, name:'Fun Fuel Riesling', region:'Mosel, Tyskland', grape:'Riesling', type:'white', price:145.10, priceDate:'APR26', vmpId:'16349201', vivinoHash:null, status:'pending', taste:'Eple, sitrus, litt drops', food:'Aperitiff, sushi, spicy mat', expertScore:3, expertSource:'GV', desc:'Frisk og lett med eple og sitrus. Litt sødme som gjør den enkel å like. Ukrevende, men sjarmerende.', note:'', rating:0, updatedAt:1 },
-  { id:9, name:'Fontanafredda Solerose Langhe Rosato', region:'Piemonte, Italia', grape:'Nebbiolo/Barbera/Dolcetto', type:'rose', price:250, priceDate:'APR26', vmpId:'9741901', vivinoHash:null, status:'pending', taste:'Jordbær, bringebær, frisk', food:'Sommermat, salater, fisk', expertScore:4, expertSource:'GV', desc:'Frisk rosé med røde bær og litt urter. Tørr og lett, men med fin smak.', note:'', rating:0, updatedAt:1 },
-  { id:13, name:'Malvirà Nudo Langhe Nebbiolo 2022', region:'Piemonte, Italia', grape:'Nebbiolo', type:'red', price:314, priceDate:'APR26', vmpId:'11847301', vivinoHash:null, status:'pending', taste:'Kirsebær, urter, tørket rose, tobakk', food:'Kjøtt, sopp, vilt', expertScore:5, expertSource:'GV', desc:'Ren og presis med dypere smak av kirsebær og urter. Stram, men balansert.', note:'', rating:0, updatedAt:1 }
+  { id:1,  name:'Fun Fuel Riesling', region:'Rheinhessen, Tyskland', grape:'Riesling', type:'white', price:145, priceDate:'APR26', vmpId:'16349201', vivinoHash:null, status:'pending', taste:'Eple, sitrus, litt drops', food:'Aperitiff, sushi, spicy mat', expertScore:3, expertSource:'GV', desc:'Frisk og lett med eple og sitrus. Litt sødme som gjør den enkel å like. Ukrevende hverdagsvin til budsjettprisen.', note:'', rating:0, updatedAt:1 },
+  { id:2,  name:'Seckinger Deidesheim Mäushöhle Riesling Erste Lage 2025', region:'Pfalz, Tyskland', grape:'Riesling', type:'white', price:198, priceDate:'APR26', vmpId:'19705401', vivinoHash:null, status:'pending', taste:'Lime, gul steinfrukt, eple, flintrøyk', food:'Skalldyr, fisk, lyst kjøtt', expertScore:5, expertSource:'GV', desc:'Stram og frisk med lime og gul steinfrukt. Spontanfermentert og lagret på fat gir kompleksitet. Ren og fokusert vin som sitter lenge — høy kvalitet for prisen.', note:'', rating:0, updatedAt:1 },
+  { id:3,  name:'Poggio Allora Vernaccia di San Gimignano 2024', region:'Toscana, Italia', grape:'Vernaccia', type:'white', price:181, priceDate:'APR26', vmpId:null, vivinoHash:'QI7EheAHRnygnrtSuYPk4A', status:'pending', taste:'Sitron, mandel, urter', food:'Fisk, pasta, salater', expertScore:4, expertSource:'GV', desc:'Tørr med sitrus og et lite bitt av mandel. Litt rund i kantene. Fin balanse mellom friskhet og mykhet — god hverdagsvin til maten.', note:'', rating:0, updatedAt:1 },
+  { id:4,  name:'Brandini Langhe Arneis La Margherite 2024', region:'Piemonte, Italia', grape:'Arneis', type:'white', price:250, priceDate:'APR26', vmpId:null, vivinoHash:'SZn967qJSJWokzj5AIfqtw', status:'pending', taste:'Pære, blomster, nøtter', food:'Kylling, kremet pasta, skalldyr', expertScore:4, expertSource:'GV', desc:'Smaker av moden pære og blomster med et nøttepreget avslutning. Litt rund og fyldig. Har nok kropp til å løfte kremet mat.', note:'', rating:0, updatedAt:1 },
+  { id:5,  name:'Gmeinböck Grüner Veltliner Muschelkalk', region:'Weinviertel, Østerrike', grape:'Grüner Veltliner', type:'white', price:169, priceDate:'APR26', vmpId:null, vivinoHash:'UZ3PnV5AQTClBCF2L850MQ', status:'pending', taste:'Sitrus, pepper, mineral, frisk', food:'Fisk, salater, grønnsaker, kylling', expertScore:4, expertSource:'GV', desc:'Frisk og sprø med sitrus og et lite pepperpreg. Ren stil fra kalkholdig jord. Veldig allsidig til mat — beste kjøp i Grüner-kategorien.', note:'', rating:0, updatedAt:1 },
+  { id:6,  name:'Kracher Grüner Veltliner 2023', region:'Burgenland, Østerrike', grape:'Grüner Veltliner', type:'white', price:239, priceDate:'APR26', vmpId:null, vivinoHash:'lpYtigHwQWCuQpUDciJbYA', status:'pending', taste:'Sitrus, urter, hvit pepper, mineralsk', food:'Fisk, ost, grønnsaker', expertScore:4, expertSource:'GV', desc:'Strammere og mer konsentrert enn klassisk Grüner. Sitrus og urter med litt trykk og mineralitet. Føles mer seriøs og varer lenge.', note:'', rating:0, updatedAt:1 },
+  { id:7,  name:'Neustifter Exklusiv Grüner Veltliner', region:'Weinviertel, Østerrike', grape:'Grüner Veltliner', type:'white', price:198, priceDate:'APR26', vmpId:'17151001', vivinoHash:null, status:'pending', taste:'Sitrus, pepper, melon, klassisk', food:'Salater, fisk, hvit kjøtt', expertScore:3, expertSource:'GV', desc:'Klassisk Grüner-stil med sitrus og litt pepper. Ren og balansert, litt fyldig avslutning. Ikke komplisert, men god og trygg.', note:'', rating:0, updatedAt:1 },
+  { id:8,  name:'Pfaffl Weinviertel Zeisen Grüner Veltliner 2020', region:'Weinviertel, Østerrike', grape:'Grüner Veltliner', type:'white', price:254, priceDate:'APR26', vmpId:'10544901', vivinoHash:null, status:'pending', taste:'Moden frukt, krydder, urter, bitter avslutning', food:'Svin, asiatisk mat, kremet pasta', expertScore:4, expertSource:'GV', desc:'Litt rikere med moden frukt og krydder. Har mer tyngde enn de yngre Grünerne. Smaker mer og varer lengre — best av de fire til kraftigere mat.', note:'', rating:0, updatedAt:1 },
+  { id:9,  name:'Fontanafredda Solerose Langhe Rosato 2022', region:'Piemonte, Italia', grape:'Nebbiolo/Barbera/Dolcetto', type:'rose', price:250, priceDate:'APR26', vmpId:'9741901', vivinoHash:null, status:'pending', taste:'Jordbær, bringebær, urter, frisk', food:'Sommermat, salater, fisk, antipasti', expertScore:4, expertSource:'GV', desc:'Frisk rosé med røde bær og litt urter. Tørr og elegant fra Piemonte. Sommerlig og lett å like — fungerer like godt alene som til mat.', note:'', rating:0, updatedAt:1 },
+  { id:10, name:'Enzo Bartoli Langhe Nebbiolo', region:'Piemonte, Italia', grape:'Nebbiolo', type:'red', price:175, priceDate:'APR26', vmpId:'11312001', vivinoHash:null, status:'pending', taste:'Kirsebær, roser, litt tannin', food:'Pizza, pasta, spekemat', expertScore:3, expertSource:'GV', desc:'Lys og frisk med kirsebær og rosduft. Litt tørr i munnen fra nebbiolo-tanniner. God og enkel inngang til druen uten å sprenge budsjettet.', note:'', rating:0, updatedAt:1 },
+  { id:11, name:'Pietro di Campo Monferrato Nebbiolo', region:'Piemonte, Italia', grape:'Nebbiolo', type:'red', price:179, priceDate:'APR26', vmpId:null, vivinoHash:'nK53OekCT9OFYELvCO9L6g', status:'pending', taste:'Røde bær, mild, enkel', food:'Pizza, pasta, enkel kjøttmat', expertScore:3, expertSource:'GV', desc:'Mild og ganske enkel. Litt røde bær og lite motstand. Mer volum enn opplevelse — 100cl gjør det til mye vin for pengene.', note:'', rating:0, updatedAt:1 },
+  { id:12, name:'F.lli. Giacosa Langhe Nebbiolo Leunin 2023', region:'Piemonte, Italia', grape:'Nebbiolo', type:'red', price:219, priceDate:'APR26', vmpId:'7018701', vivinoHash:null, status:'pending', taste:'Kirsebær, nype, urter, fat', food:'Kjøtt, ost, sopp', expertScore:4, expertSource:'GV', desc:'Strammere med tydeligere tanniner og mer dybde. Kirsebær, nype og litt fat. Føles mer seriøs enn de enklere nebbioloane.', note:'', rating:0, updatedAt:1 },
+  { id:13, name:'Malvirà Nudo Langhe Nebbiolo 2022', region:'Piemonte, Italia', grape:'Nebbiolo', type:'red', price:314, priceDate:'APR26', vmpId:'11847301', vivinoHash:null, status:'pending', taste:'Kirsebær, urter, tørket rose, tobakk', food:'Kjøtt, sopp, vilt', expertScore:5, expertSource:'GV', desc:'Ren og presis med dypere smak av kirsebær og urter. Stram, men balansert med lang avslutning. Best i nebbiolo-kategorien — verdt prisen.', note:'', rating:0, updatedAt:1 },
+  { id:14, name:'Kaltern Alto Adige Edelvernatsch 2023', region:'Alto Adige, Italia', grape:'Schiava', type:'red', price:205, priceDate:'APR26', vmpId:null, vivinoHash:'_0j-tYkXQSW3uK3gy0pEtQ', status:'pending', taste:'Røde bær, saftig, blomster, lett', food:'Lunsj, spekemat, kylling, pizza', expertScore:3, expertSource:'GV', desc:'Svært lett og saftig med røde bær og blomsterduft. Nesten juice-aktig friskhet. Ukomplisert og sjarmerende — perfekt til lunsj eller lett sommermat.', note:'', rating:0, updatedAt:1 },
+  { id:15, name:'Tedeschi Valpolicella Classico Lucchine 2024', region:'Veneto, Italia', grape:'Corvina/Corvinone/Rondinella', type:'red', price:194, priceDate:'APR26', vmpId:'5127201', vivinoHash:null, status:'pending', taste:'Kirsebær, urter, frisk, lett', food:'Pizza, pasta, enkel kjøttmat', expertScore:4, expertSource:'GV', desc:'Frisk og lett med kirsebær og urter. Klassisk Valpolicella fra pålitelig produsent. Veldig anvendelig til hverdagsmat.', note:'', rating:0, updatedAt:1 },
+  { id:16, name:'Icardi Pafoj Langhe Rosso', region:'Piemonte, Italia', grape:'Nebbiolo/Barbera', type:'red', price:265, priceDate:'APR26', vmpId:null, vivinoHash:'tRHAFYvOTGW8j_acZJuy4g', status:'pending', taste:'Mørke bær, myk, fyldig, litt vanilje', food:'Kjøttmat, gryte, pasta bolognese', expertScore:4, expertSource:'GV', desc:'Mykere og rundere med mørkere bær og litt fatkrydder. Litt mer fylde enn de enklere Langhe-vinene. Behagelig og lett å like til mat.', note:'', rating:0, updatedAt:1 },
+  { id:17, name:'Fun Fuel Shiraz', region:'Sør-Afrika', grape:'Shiraz', type:'red', price:145, priceDate:'APR26', vmpId:'16274501', vivinoHash:null, status:'pending', taste:'Mørke bær, krydder, pepper, fyldig', food:'Grill, burger, sterk mat', expertScore:3, expertSource:'GV', desc:'Fyldig med mørke bær og litt krydder og pepper. Enkel i uttrykket men veldig lett å like. God budsjettvin til grillmat.', note:'', rating:0, updatedAt:1 },
+  { id:18, name:'Dom. Wachau Glühwein', region:'Wachau, Østerrike', grape:'Rød blend', type:'red', price:null, priceDate:'APR26', vmpId:'11323501', vivinoHash:null, status:'pending', taste:'Søt, kanel, nellik, appelsin', food:'Varm drikke, julemat, kos', expertScore:3, expertSource:'GV', desc:'Søt og krydret med kanel, nellik og appelsin. Varm og fyldig gløgg fra Wachau. Mer kos enn vinopplevelse.', note:'', rating:0, updatedAt:1 }
 ];
 
-/* ── FILTER + SORT ── */
-function getFiltered() {
-  const q = document.getElementById('search').value.toLowerCase().trim();
-  const sortBy = document.getElementById('sort-by').value;
-  let list = wines.filter(w => {
-    const typeOk   = activeTypes.size === 0 || activeTypes.has(w.type);
-    const statusOk = activeStatuses.size === 0 ? w.status !== 'dismissed' : activeStatuses.has(w.status);
-    const searchOk = !q || [w.name,w.grape,w.region,w.taste,w.desc,w.note,w.food].some(s=>s&&s.toLowerCase().includes(q));
-    return typeOk && statusOk && searchOk;
+/* ══ FILTER + SORT ══ */
+function getFiltered(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  const sortBy=document.getElementById('sort-by').value;
+  let list=wines.filter(w=>{
+    const typeOk=activeTypes.size===0||activeTypes.has(w.type);
+    const statusOk=activeStatuses.size===0?w.status!=='dismissed':activeStatuses.has(w.status);
+    const searchOk=!q||[w.name,w.grape,w.region,w.taste,w.desc,w.note,w.food].some(s=>s&&s.toLowerCase().includes(q));
+    return typeOk&&statusOk&&searchOk;
   });
-  list.sort((a,b) => {
-    switch(sortBy) {
+  list.sort((a,b)=>{
+    switch(sortBy){
       case 'expert-desc': return (b.expertScore||0)-(a.expertScore||0);
       case 'expert-asc':  return (a.expertScore||0)-(b.expertScore||0);
       case 'rating-desc': return (b.rating||0)-(a.rating||0);
@@ -445,30 +362,25 @@ function getFiltered() {
   return list;
 }
 
-function render() {
-  const list   = getFiltered();
-  const sortBy = document.getElementById('sort-by').value;
-  const groups = {white:[],rose:[],red:[]};
-  list.forEach(w => (groups[w.type]||[]).push(w));
-  let html = `<div class="count-info">${list.length} vin${list.length!==1?'er':''} vist</div>`;
-  if (sortBy !== 'default') {
-    html += list.length ? `<div class="grid">${list.map(cardHTML).join('')}</div>` : '<div class="empty">Ingen viner funnet.</div>';
+function render(){
+  const list=getFiltered();
+  const sortBy=document.getElementById('sort-by').value;
+  const groups={white:[],rose:[],red:[]};
+  list.forEach(w=>(groups[w.type]||[]).push(w));
+  let html=`<div class="count-info">${list.length} vin${list.length!==1?'er':''} vist</div>`;
+  if(sortBy!=='default'){
+    html+=list.length?`<div class="grid">${list.map(cardHTML).join('')}</div>`:'<div class="empty">Ingen viner funnet.</div>';
   } else {
-    ['white','rose','red'].forEach(t => {
-      if (!groups[t].length) return;
-      html += `<div class="section-label">${typeHeading(t)}</div><div class="grid">${groups[t].map(cardHTML).join('')}</div>`;
-    });
-    if (!list.length) html += '<div class="empty">Ingen viner funnet.</div>';
+    ['white','rose','red'].forEach(t=>{ if(!groups[t].length)return; html+=`<div class="section-label">${typeHeading(t)}</div><div class="grid">${groups[t].map(cardHTML).join('')}</div>`; });
+    if(!list.length) html+='<div class="empty">Ingen viner funnet.</div>';
   }
-  document.getElementById('wine-list').innerHTML = html;
+  document.getElementById('wine-list').innerHTML=html;
 }
 
-function cardHTML(w) {
-  const badge = w.status==='pending' ? '<span class="status-badge badge-pending">Ikke smakt</span>' :
-    w.status==='recommended' ? '<span class="status-badge badge-recommended">Anbefalt</span>' :
-    '<span class="status-badge badge-dismissed">Forkastet</span>';
-  const diceRow   = w.expertScore ? `<div class="card-dice-row">${diceSVG(w.expertScore,14)}<span style="font-size:9px;color:#999;font-weight:600">${scoreTag(w)}</span></div>` : '';
-  const userStars = w.rating ? `<div style="display:flex;gap:1px;margin-bottom:2px">${Array.from({length:6},(_,i)=>`<span style="font-size:10px;color:${i<w.rating?'#f0a500':'#ddd'}">★</span>`).join('')}</div>` : '';
+function cardHTML(w){
+  const badge=w.status==='pending'?'<span class="status-badge badge-pending">Ikke smakt</span>':w.status==='recommended'?'<span class="status-badge badge-recommended">Anbefalt</span>':'<span class="status-badge badge-dismissed">Forkastet</span>';
+  const diceRow=w.expertScore?`<div class="card-dice-row">${diceSVG(w.expertScore,14)}<span style="font-size:9px;color:#999;font-weight:600">${scoreTag(w)}</span></div>`:'';
+  const userStars=w.rating?`<div style="display:flex;gap:1px;margin-bottom:2px">${Array.from({length:6},(_,i)=>`<span style="font-size:10px;color:${i<w.rating?'#f0a500':'#ddd'}">★</span>`).join('')}</div>`:'';
   return `<div class="wine-card" onclick="openModal(${w.id})">
     <div class="card-img-area">${imgAreaHTML(w,155)}<div class="type-icon-badge">${typeIcon(w.type,14)}</div></div>
     <div class="card-body">${diceRow}${userStars}
@@ -482,14 +394,18 @@ function cardHTML(w) {
   </div>`;
 }
 
-/* ── MODAL ── */
-function openModal(id) { selectedId=id; const w=wines.find(x=>x.id===id); if(!w)return; editRating=w.rating||0; renderModal(w); }
-function renderModal(w) {
-  const warn     = w.status==='dismissed' ? `<div class="dismiss-warning"><span>⚠️</span><span>Merket som forkastet.</span></div>` : '';
-  const priceStr = w.price ? Math.round(w.price)+' kr'+(w.priceDate?` <span style="font-size:10px;color:#bbb">(${w.priceDate})</span>`:'') : '—';
-  const kvalRow  = w.expertScore ? `<span class="dl">Kvalitet:</span><span class="dv" style="display:flex;align-items:center;gap:5px">${diceSVG(w.expertScore,20)}<span style="font-size:10px;color:#999;font-weight:600">${scoreTag(w)}</span></span>` : '';
-  const vmpBtn   = w.vmpId ? `<a href="https://www.vinmonopolet.no/p/${w.vmpId}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#1a56b0;text-decoration:underline">Se på Vinmonopolet ↗</a>` : '';
-  document.getElementById('modal-container').innerHTML = `<div class="modal-overlay" onclick="closeModal(event)">
+/* ══ MODAL ══ */
+function openModal(id){
+  selectedId=id;
+  const w=wines.find(x=>x.id===id); if(!w) return;
+  editRating=w.rating||0; renderModal(w);
+}
+function renderModal(w){
+  const warn=w.status==='dismissed'?`<div class="dismiss-warning"><span>⚠️</span><span>Merket som forkastet.</span></div>`:'';
+  const priceStr=w.price?Math.round(w.price)+' kr'+(w.priceDate?` <span style="font-size:10px;color:#bbb">(${w.priceDate})</span>`:''):'—';
+  const kvalRow=w.expertScore?`<span class="dl">Kvalitet:</span><span class="dv" style="display:flex;align-items:center;gap:5px">${diceSVG(w.expertScore,20)}<span style="font-size:10px;color:#999;font-weight:600">${scoreTag(w)}</span></span>`:'';
+  const vmpBtn=w.vmpId?`<a href="https://www.vinmonopolet.no/p/${w.vmpId}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#1a56b0;text-decoration:underline">Se på Vinmonopolet ↗</a>`:'';
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-img-area">${imgAreaHTML(w,195)}<div class="modal-type-badge">${typeIcon(w.type,22)}</div></div>
       <div class="modal-body">
@@ -514,103 +430,118 @@ function renderModal(w) {
         ${w.status!=='recommended'?`<button class="action-btn green" onclick="setStatus(${w.id},'recommended')">✓ Anbefalt</button>`:''}
         ${w.status==='dismissed'?`<button class="action-btn" onclick="setStatus(${w.id},'pending')">Gjenopprett</button>`:''}
         ${w.status!=='dismissed'?`<button class="action-btn red" onclick="setStatus(${w.id},'dismissed')">✗ Forkast</button>`:''}
+        <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
         <button class="action-btn" onclick="saveNote(${w.id})">Lagre notat</button>
-        ${w.vmpId?`<button class="action-btn info" onclick="updateSinglePrice(${w.id})">↻ Oppdater pris</button>`:''}
         <button class="action-btn" style="margin-left:auto" onclick="closeModal()">Lukk</button>
       </div>
     </div>
   </div>`;
   renderStars();
 }
-function setRating(r)   { editRating = (r===editRating) ? 0 : r; renderStars(); }
-function renderStars()  {
+
+function openEditMode(id){
+  const w=wines.find(x=>x.id===id); if(!w) return;
+  const body=document.querySelector('.modal-body');
+  if(!body) return;
+  const existing=document.getElementById('edit-section');
+  if(existing){ existing.remove(); return; } // toggle off
+  const typeOpts=['white','rose','red'].map(t=>`<option value="${t}"${w.type===t?' selected':''}>${typeLabel(t)}</option>`).join('');
+  const scoreOpts=['','1','2','3','4','5','6'].map(v=>`<option value="${v}"${String(w.expertScore||'')==v?' selected':''}>${v||'—'}</option>`).join('');
+  const srcOpts=[['GV','GV — Generell vurdering'],['IT','IT — Ingvild Tennfjord']].map(([v,l])=>`<option value="${v}"${w.expertSource===v?' selected':''}>${l}</option>`).join('');
+  const section=document.createElement('div');
+  section.id='edit-section';
+  section.className='edit-form-section';
+  section.innerHTML=`
+    <div class="tasting-label" style="margin-top:0">Rediger vininfo</div>
+    <div class="edit-row"><input id="ed-name" value="${w.name}" placeholder="Navn"/></div>
+    <div class="edit-row"><input id="ed-grape" value="${w.grape}" placeholder="Drue"/><input id="ed-region" value="${w.region}" placeholder="Region"/></div>
+    <div class="edit-row"><select id="ed-type">${typeOpts}</select><input id="ed-price" type="number" value="${w.price||''}" placeholder="Pris (kr)"/></div>
+    <div class="edit-row"><input id="ed-taste" value="${w.taste}" placeholder="Smak"/></div>
+    <div class="edit-row"><input id="ed-food" value="${w.food}" placeholder="Passer til"/></div>
+    <div class="edit-row"><textarea id="ed-desc" rows="2" placeholder="Beskrivelse">${w.desc}</textarea></div>
+    <div class="edit-row" style="align-items:center;gap:8px">
+      <label style="font-size:11px;color:#888">Terningkast:</label>
+      <select id="ed-score">${scoreOpts}</select>
+      <select id="ed-src">${srcOpts}</select>
+    </div>
+    <div class="edit-row"><input id="ed-vmpid" value="${w.vmpId||''}" placeholder="VMP-nr"/><input id="ed-vivino" value="${w.vivinoHash||''}" placeholder="Vivino-hash"/></div>
+    <div style="display:flex;gap:7px;margin-top:4px">
+      <button class="action-btn green" onclick="saveEdit(${id})">✓ Lagre endringer</button>
+      <button class="action-btn" onclick="document.getElementById('edit-section').remove()">Avbryt</button>
+    </div>`;
+  body.appendChild(section);
+}
+
+async function saveEdit(id){
+  const w=wines.find(x=>x.id===id); if(!w) return;
+  const g=id=>document.getElementById(id)?.value.trim();
+  const score=g('ed-score');
+  w.name=g('ed-name')||w.name;
+  w.grape=g('ed-grape')||w.grape;
+  w.region=g('ed-region')||w.region;
+  w.type=g('ed-type')||w.type;
+  w.price=parseFloat(g('ed-price'))||w.price;
+  w.taste=g('ed-taste')||w.taste;
+  w.food=g('ed-food')||w.food;
+  w.desc=g('ed-desc')||w.desc;
+  w.expertScore=score?parseInt(score):null;
+  w.expertSource=g('ed-src')||'GV';
+  w.vmpId=g('ed-vmpid')||null;
+  const vivRaw=g('ed-vivino');
+  if(vivRaw){ const m=vivRaw.match(/thumbs\/([^_]+)/); w.vivinoHash=m?m[1]:vivRaw; } else w.vivinoHash=null;
+  w.note=document.getElementById('modal-note')?.value||w.note;
+  w.rating=editRating;
+  await saveWine(w);
+  renderModal(w);
+  const el=document.getElementById('note-saved'); if(el) el.innerHTML='<span class="note-saved">✓ Endringer lagret</span>';
+}
+
+function setRating(r){ editRating=(r===editRating)?0:r; renderStars(); }
+function renderStars(){
   let s='';
   for(let i=1;i<=6;i++) s+=`<span class="star6${i<=editRating?' lit':''}" onclick="setRating(${i})" title="${i===editRating?'Klikk for å fjerne':'Sett '+i+' stjerner'}">★</span>`;
-  const el=document.getElementById('modal-stars'); if(el)el.innerHTML=s;
+  const el=document.getElementById('modal-stars'); if(el) el.innerHTML=s;
 }
-async function saveNote(id) {
-  const w = wines.find(x=>x.id===id); if(!w)return;
-  w.note   = document.getElementById('modal-note').value;
-  w.rating = editRating;
+async function saveNote(id){
+  const w=wines.find(x=>x.id===id); if(!w) return;
+  w.note=document.getElementById('modal-note').value; w.rating=editRating;
   await saveWine(w);
   document.getElementById('note-saved').innerHTML='<span class="note-saved">✓ Lagret</span>';
 }
-async function setStatus(id, status) {
-  const w = wines.find(x=>x.id===id); if(!w)return;
-  const el = document.getElementById('modal-note'); if(el)w.note=el.value;
-  w.rating = editRating; w.status = status;
-  await saveWine(w);
-  renderModal(w);
+async function setStatus(id,status){
+  const w=wines.find(x=>x.id===id); if(!w) return;
+  const el=document.getElementById('modal-note'); if(el) w.note=el.value;
+  w.rating=editRating; w.status=status;
+  await saveWine(w); renderModal(w);
 }
-function closeModal(e) {
-  if(!e||e.target.classList.contains('modal-overlay')){ document.getElementById('modal-container').innerHTML=''; selectedId=null; }
+function closeModal(e){
+  if(!e||e.target.id==='modal-overlay'){ document.getElementById('modal-container').innerHTML=''; selectedId=null; }
 }
+// ESC key closes modal
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&selectedId!==null){ document.getElementById('modal-container').innerHTML=''; selectedId=null; } });
 
-/* ── PRICE UPDATE (prices only) ── */
-async function fetchVmpPrice(vmpId) {
-  try {
-    const res  = await fetch(`${VMP_API}?productId=${vmpId}&maxResults=1`);
-    if(!res.ok) return null;
-    const data = await res.json();
-    if(data&&data.length>0&&data[0].price) return parseFloat(data[0].price);
-  } catch(e) {}
-  return null;
-}
-async function updateSinglePrice(id) {
-  const w  = wines.find(x=>x.id===id); if(!w||!w.vmpId)return;
-  const el = document.getElementById('note-saved');
-  if(el) el.innerHTML='<span style="font-size:10px;color:#888">Henter pris...</span>';
-  const p = await fetchVmpPrice(w.vmpId);
-  if(p!==null) { w.price=p; w.priceDate=nowLabel(); await saveWine(w); renderModal(w); }
-  else if(el) el.innerHTML='<span style="font-size:10px;color:#a32d2d">Beholder forrige pris.</span>';
-}
-async function updateAllPrices() {
-  const b = document.getElementById('update-banner');
-  b.innerHTML='<div class="update-banner">↻ Oppdaterer priser...</div>';
-  let n=0;
-  for(const w of wines.filter(x=>x.vmpId)) {
-    const p = await fetchVmpPrice(w.vmpId);
-    if(p!==null) { w.price=p; w.priceDate=nowLabel(); w.updatedAt=Date.now(); n++; }
-  }
-  saveLocal();
-  if(navigator.onLine) await syncWithCloud();
-  render();
-  b.innerHTML=`<div class="update-banner" style="color:#2d6a2d">✓ ${n} oppdatert (${nowLabel()})</div>`;
-  setTimeout(()=>b.innerHTML='',5000);
-}
-
-/* ── VMP SEARCH ── */
-
-/* ── MANUAL ADD ── */
+/* ══ MANUAL ADD ══ */
 function toggleManualForm(){
   showManual=!showManual;
   const c=document.getElementById('add-form-container');
   if(!showManual){c.style.display='none';c.innerHTML='';return;}
   c.style.display='block';
-  c.innerHTML=`<div class="add-form">
-    <h3>Legg til vin manuelt</h3>
-    <div style="background:#f0f4ff;border-radius:7px;padding:9px 11px;margin-bottom:10px;font-size:11px;color:#444;line-height:1.7">
-      <strong>Rask metode:</strong> Finn vinen på <a href="https://www.vinmonopolet.no" target="_blank" style="color:#1a56b0">vinmonopolet.no</a>,
-      kopier nummeret fra URL-en (f.eks. <code>/p/16349201</code>) og lim inn under.
-      Appen henter da navn, drue, region, pris, smak, mat og beskrivelse automatisk! 🚀
-    </div>
-    <div class="form-row" style="align-items:flex-end">
-      <div style="flex:1">
-        <div style="font-size:10px;color:#888;margin-bottom:3px;font-weight:500">VINMONOPOLET-NR (henter data automatisk)</div>
-        <input id="nw-vmpid" placeholder="F.eks. 16349201" oninput="scheduleVmpLookup()" style="width:100%" />
-      </div>
-      <div id="vmp-lookup-status" style="font-size:11px;color:#888;white-space:nowrap;padding-bottom:8px"></div>
-    </div>
-    <div id="nw-fetched-preview" style="display:none;background:#f5f9f0;border:1px solid #c8e0b0;border-radius:7px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#2d6a2d"></div>
+  c.innerHTML=`<div class="add-form"><h3>Legg til vin manuelt</h3>
     <div class="form-row"><input id="nw-name" placeholder="Navn *"/><input id="nw-grape" placeholder="Drue(r)"/></div>
     <div class="form-row"><input id="nw-region" placeholder="Region / Land"/><select id="nw-type"><option value="white">Hvitvin</option><option value="rose">Rosévin</option><option value="red">Rødvin</option></select></div>
-    <div class="form-row"><input id="nw-price" type="number" placeholder="Pris (kr)"/><input id="nw-vivino" placeholder="Vivino-hash (valgfritt)"/></div>
+    <div class="form-row"><input id="nw-price" type="number" placeholder="Pris (kr)"/><input id="nw-vmpid" placeholder="VMP-nr (for bilde)"/></div>
+    <div class="form-row"><input id="nw-vivino" placeholder="Vivino-hash (for bilde)"/></div>
     <div class="form-row"><input id="nw-taste" placeholder="Smak"/><input id="nw-food" placeholder="Passer til"/></div>
     <div class="form-row"><textarea id="nw-desc" placeholder="Beskrivelse" rows="2"></textarea></div>
     <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <label style="font-size:11px;color:#888">Terningkast:</label>
       <select id="nw-score" style="font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
       <select id="nw-source" style="font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff"><option value="GV">GV</option><option value="IT">IT — Ingvild Tennfjord</option></select>
+    </div>
+    <div style="background:#f0f4ff;border-radius:7px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#555;line-height:1.6">
+      💡 <strong>Bilde:</strong> VMP-nr fra URL på vinmonopolet.no (f.eks. <code>/p/16349201</code>).
+      Alternativt Vivino-hash fra bildeadressen på vivino.com.
+      Vil du ha fullstendig data automatisk? Send varenummeret til meg i chatten.
     </div>
     <div style="display:flex;gap:7px">
       <button class="action-btn green" onclick="addManualWine()">+ Legg til</button>
@@ -619,213 +550,27 @@ function toggleManualForm(){
   </div>`;
 }
 
-let vmpLookupTimer = null;
-function scheduleVmpLookup(){
-  clearTimeout(vmpLookupTimer);
-  const v = document.getElementById('nw-vmpid')?.value.trim();
-  if (!v || v.length < 5) return;
-  vmpLookupTimer = setTimeout(() => fetchVmpDataForForm(v), 600);
-}
-
-async function fetchVmpDataForForm(pid) {
-  const status  = document.getElementById('vmp-lookup-status');
-  const preview = document.getElementById('nw-fetched-preview');
-  if (!status) return;
-  status.textContent = '⏳ Henter vindata...';
-  status.style.color = '#888';
-
-  // Use Claude API as proxy to fetch VMP data — avoids CORS block from file://
-  // Claude fetches VMP JSON server-side AND searches for expert reviews in one call
-  const prompt = `Gjør følgende to ting for varenummer ${pid} på vinmonopolet.no:
-
-1. Hent produktdata fra denne URL via web_search eller fetch:
-   https://apis.vinmonopolet.no/products/v0/details-normal?productId=${pid}&maxResults=1
-   
-   Trekk ut: produktnavn (productShortName), druer (ingredients.grapes[].name), land (origins.origin[0].country), distrikt (origins.origin[0].district), pris (price), smaksbeskrivelse (description.characteristicDescription), smakskarakteristikker (characteristics[].name), matanbefaling (food[].name), type (mainSubCategoryCode — hvitvin/rødvin/rosévin).
-
-2. Søk etter anmeldelse og terningkast for denne vinen.
-   Prioriter Ingvild Tennfjord (aftenposten.no, bt.no) → kilde "IT".
-   Ellers beste kilde (vinpuls.no, godtdrikke.no, vivino, falstaff) → kilde "GV".
-   Interpoler til 1-6 skala (100p→6, 90p→5, 80p→4, 70p→3).
-   Skriv 2-3 setninger norsk beskrivelse i enkel, uformell stil.
-
-Svar KUN med dette JSON-formatet (ingen annen tekst):
-{
-  "name": "Malvirà Nudo Langhe Nebbiolo 2022",
-  "grape": "Nebbiolo",
-  "region": "Langhe, Italia",
-  "price": 314,
-  "type": "red",
-  "taste": "Kirsebær, urter",
-  "food": "Kjøtt, sopp",
-  "score": 5,
-  "source": "GV",
-  "desc": "Ren og presis med kirsebær og urter..."
-}
-type må være en av: white, rose, red`;
-
-  try {
-    const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const apiData = await apiRes.json();
-    const text = (apiData.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
-    console.log('Claude raw response:', text);
-    console.log('Full apiData:', JSON.stringify(apiData).substring(0,500));
-    if (!text) throw new Error('Tom respons fra Claude API. apiData: ' + JSON.stringify(apiData).substring(0,200));
-    const cleanText = text.replace(/```json/g,'').replace(/```/g,'').trim();
-    console.log('Clean text:', cleanText);
-    const parsed = JSON.parse(cleanText);
-
-    // Fill form fields
-    const set = (id, val) => { const el=document.getElementById(id); if(el && val!=null && val!='') el.value=val; };
-    set('nw-name',   parsed.name);
-    set('nw-grape',  parsed.grape);
-    set('nw-region', parsed.region);
-    set('nw-taste',  parsed.taste);
-    set('nw-food',   parsed.food);
-    set('nw-desc',   parsed.desc);
-    if (parsed.price) set('nw-price', Math.round(parsed.price));
-    if (parsed.type) {
-      const typeEl = document.getElementById('nw-type');
-      if (typeEl) typeEl.value = parsed.type;
-    }
-    if (parsed.score) {
-      const scoreEl = document.getElementById('nw-score');
-      if (scoreEl) scoreEl.value = String(parsed.score);
-    }
-    if (parsed.source) {
-      const srcEl = document.getElementById('nw-source');
-      if (srcEl) srcEl.value = parsed.source;
-    }
-
-    status.textContent = '✓ Klar';
-    status.style.color = '#2d6a2d';
-
-    if (preview) {
-      preview.style.display = 'block';
-      const itTag = parsed.source==='IT'
-        ? ' · <strong style="color:#1a6a1a">✓ Ingvild Tennfjord</strong>'
-        : parsed.score ? ' · Terningkast funnet (GV)' : '';
-      preview.innerHTML = `<strong>✓ Hentet:</strong> ${parsed.name||'—'} · ${parsed.grape||''} · ${parsed.region||''} · ${parsed.price?Math.round(parsed.price)+' kr':''}${itTag}`;
-    }
-
-  } catch(e) {
-    status.textContent = '⚠ Feil — se konsoll (F12)';
-    status.style.color = '#a32d2d';
-    console.error('VMP fetch error:', e);
-    if (preview) {
-      preview.style.display = 'block';
-      preview.style.background = '#fdecea';
-      preview.style.borderColor = '#f7c1c1';
-      preview.style.color = '#a32d2d';
-      preview.innerHTML = '⚠ Feil: ' + e.message;
-    }
-  }
-}
-
 async function addManualWine(){
-  const name=document.getElementById('nw-name').value.trim();
-  if(!name){alert('Navn er påkrevd. Skriv inn et Vinmonopolet-nummer eller fyll inn navn manuelt.');return;}
+  const name=document.getElementById('nw-name').value.trim(); if(!name){alert('Navn er påkrevd.');return;}
   const vivRaw=document.getElementById('nw-vivino').value.trim(); let vivinoHash=null;
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);vivinoHash=m?m[1]:vivRaw;}
   const score=document.getElementById('nw-score').value;
-  const newWine={
-    id:nextId(), name,
-    grape:   document.getElementById('nw-grape').value.trim()||'—',
-    region:  document.getElementById('nw-region').value.trim()||'—',
-    type:    document.getElementById('nw-type').value,
-    price:   parseFloat(document.getElementById('nw-price').value)||null,
-    priceDate: nowLabel(),
-    vmpId:   document.getElementById('nw-vmpid').value.trim()||null,
-    vivinoHash,
-    status:  'pending',
-    taste:   document.getElementById('nw-taste').value.trim()||'—',
-    food:    document.getElementById('nw-food').value.trim()||'—',
-    expertScore:  score?parseInt(score):null,
-    expertSource: document.getElementById('nw-source').value,
-    desc:    document.getElementById('nw-desc').value.trim()||'',
-    note:'', rating:0, updatedAt:Date.now()
-  };
-  showManual=false;
-  document.getElementById('add-form-container').style.display='none';
-  document.getElementById('add-form-container').innerHTML='';
+  const newWine={id:nextId(),name,grape:document.getElementById('nw-grape').value.trim()||'—',region:document.getElementById('nw-region').value.trim()||'—',type:document.getElementById('nw-type').value,price:parseFloat(document.getElementById('nw-price').value)||null,priceDate:nowLabel(),vmpId:document.getElementById('nw-vmpid').value.trim()||null,vivinoHash,status:'pending',taste:document.getElementById('nw-taste').value.trim()||'—',food:document.getElementById('nw-food').value.trim()||'—',expertScore:score?parseInt(score):null,expertSource:document.getElementById('nw-source').value,desc:document.getElementById('nw-desc').value.trim()||'',note:'',rating:0,updatedAt:Date.now()};
+  showManual=false; document.getElementById('add-form-container').style.display='none'; document.getElementById('add-form-container').innerHTML='';
   await saveWine(newWine);
 }
 
-/* ── SETUP SCREEN ── */
-function showSetupScreen() {
-  document.getElementById('app-root').style.display = 'none';
-  document.getElementById('setup-screen').style.display = 'flex';
-}
-function hideSetupScreen() {
-  document.getElementById('setup-screen').style.display = 'none';
-  document.getElementById('app-root').style.display = 'block';
-}
-async function saveSetup() {
-  const binId     = document.getElementById('setup-bin-id').value.trim();
-  const accessKey = document.getElementById('setup-access-key').value.trim();
-  const err       = document.getElementById('setup-error');
-  if (!binId || !accessKey) { err.textContent = 'Begge feltene er påkrevd.'; return; }
-  err.textContent = '';
-  // Test the credentials
-  document.getElementById('setup-btn').textContent = 'Tester...';
-  try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-      headers: { 'X-Access-Key': accessKey }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    localStorage.setItem(LS_SETUP, JSON.stringify({ binId, accessKey }));
-    hideSetupScreen();
-    await bootApp();
-  } catch(e) {
-    document.getElementById('setup-btn').textContent = 'Lagre og koble til';
-    err.textContent = '⚠ Kunne ikke koble til JSONBin. Sjekk ID og nøkkel og prøv igjen.';
-  }
-}
-function openSettings() {
-  const c = getConfig();
-  document.getElementById('setup-bin-id').value = c.binId || '';
-  document.getElementById('setup-access-key').value = c.accessKey || '';
-  document.getElementById('setup-error').textContent = '';
-  document.getElementById('setup-btn').textContent = 'Lagre og koble til';
-  showSetupScreen();
-}
-
-/* ── BOOT ── */
-async function bootApp() {
+/* ══ BOOT ══ */
+async function bootApp(){
   loadLocal();
-  if (wines.length === 0) {
-    wines = defaultWines.map(w=>({...w}));
-    saveLocal();
-  }
-  render();
-  setSyncBadge('wait', '⟳ Syncer...');
-  if (navigator.onLine) {
-    await syncWithCloud();
-  } else {
-    setSyncBadge('wait', '⏳ Offline — bruker lokal kopi');
-  }
+  if(wines.length===0){ wines=defaultWines.map(w=>({...w})); saveLocal(); }
+  render(); setSyncBadge('wait','⟳ Syncer...');
+  if(navigator.onLine) await syncWithCloud(); else setSyncBadge('wait','⏳ Offline — bruker lokal kopi');
 }
-
-async function init() {
-  if (!isConfigured()) {
-    showSetupScreen();
-  } else {
-    hideSetupScreen();
-    await bootApp();
-  }
+async function init(){
+  if(!isConfigured()) showSetupScreen(); else { hideSetupScreen(); await bootApp(); }
 }
-
 init();
 </script>
-</div><!-- /app-root -->
 </body>
 </html>
