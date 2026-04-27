@@ -105,6 +105,26 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
 /* LIGHTBOX */
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;}
 .lightbox img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px;}
+
+/* SEARCH X BUTTON */
+.search-wrap{position:relative;flex:1;min-width:160px;display:flex;align-items:center;}
+.search-wrap input{width:100%;padding-right:28px;}
+.search-clear{position:absolute;right:8px;font-size:14px;color:#aaa;cursor:pointer;display:none;line-height:1;background:none;border:none;padding:0;}
+.search-clear:hover{color:#666;}
+
+/* PROFILE CIRCLES */
+.profile-circles{display:flex;gap:6px;align-items:center;}
+.profile-circle-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.profile-circle-wrap.empty{visibility:hidden;}
+.profile-label{font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+.profile-label-full{font-size:10px;color:#888;text-align:center;}
+
+/* STATUS BADGE UPDATES */
+.badge-har{background:#e8f4e8;color:#2d6a2d;}
+.badge-bestill{background:#e8f0fe;color:#1a56b0;}
+.badge-meh{background:#f0f0f0;color:#999;}
+.action-btn.meh{background:#f0f0f0;color:#999;border-color:#ddd;}
+.action-btn.meh:hover{background:#e5e5e5;}
 </style>
 </head>
 <body>
@@ -145,7 +165,11 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
   <div class="toolbar">
     <div class="toolbar-row">
       <span class="toolbar-label">Søk</span>
-      <input class="search-input" id="search" placeholder="Navn, drue, smak, mat..." oninput="render()"/>
+      <div class="search-wrap">
+        <input class="search-input" id="search" placeholder="Navn, drue, smak, mat..."
+          oninput="onSearchInput()" onkeydown="onSearchKey(event)" style="flex:1;min-width:0;"/>
+        <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+      </div>
     </div>
     <div class="toolbar-row">
       <span class="toolbar-label">Type</span>
@@ -156,9 +180,10 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
     </div>
     <div class="toolbar-row">
       <span class="toolbar-label">Status</span>
-      <button class="toggle-btn" id="tb-all"     onclick="toggleStatus('all')">Alle</button>
-      <button class="toggle-btn" id="tb-pending" onclick="toggleStatus('pending')">Ikke smakt</button>
-      <button class="toggle-btn" id="tb-boring"  onclick="toggleStatus('boring')">Boring</button>
+      <button class="toggle-btn" id="tb-alle"    onclick="toggleStatus('alle')">Alle</button>
+      <button class="toggle-btn" id="tb-har"     onclick="toggleStatus('har')">Har</button>
+      <button class="toggle-btn" id="tb-bestill" onclick="toggleStatus('bestill')">Bestill</button>
+      <button class="toggle-btn" id="tb-meh"     onclick="toggleStatus('meh')">Meh</button>
     </div>
     <div class="toolbar-row">
       <span class="toolbar-label">Sorter</span>
@@ -168,6 +193,7 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
         <option value="price">Pris</option>
         <option value="expert">Terningkast</option>
         <option value="rating">Mine stjerner</option>
+        <option value="recent">Sist endret</option>
       </select>
       <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Bytt retning">↓</button>
       <button class="toggle-btn" onclick="resetFilters()">✕ Nullstill</button>
@@ -198,7 +224,7 @@ function isConfigured(){const c=getConfig();return !!(c.binId&&c.accessKey);}
 let wines=[];
 let customOrder=[]; // array of wine ids in custom order
 let activeTypes=new Set();
-let activeStatuses=new Set();
+let activeStatuses=new Set(['alle']); // default: show all (except meh)
 let sortBy='custom';
 let sortAsc=false; // false = descending for most fields
 let showManual=false;
@@ -333,22 +359,62 @@ function downloadBackup(){
 }
 
 /* ── FILTERS ── */
+/* ── SEARCH ── */
+function onSearchInput(){
+  render();
+  const val=document.getElementById('search').value;
+  const btn=document.getElementById('search-clear');
+  if(btn) btn.style.display=val?'block':'none';
+}
+function onSearchKey(e){
+  if(e.key==='Escape'){clearSearch();e.target.blur();}
+}
+function clearSearch(){
+  const el=document.getElementById('search');
+  if(el){el.value='';el.blur();}
+  const btn=document.getElementById('search-clear');
+  if(btn) btn.style.display='none';
+  render();
+}
+
 function toggleType(t){activeTypes.has(t)?activeTypes.delete(t):activeTypes.add(t);updateToolbar();render();}
-function toggleStatus(s){activeStatuses.has(s)?activeStatuses.delete(s):activeStatuses.add(s);updateToolbar();render();}
-function resetFilters(){activeTypes.clear();activeStatuses.clear();document.getElementById('sort-by').value='custom';sortBy='custom';sortAsc=false;document.getElementById('sort-dir-btn').textContent='↓';updateToolbar();render();}
+function toggleStatus(s){
+  // Alle and Meh are exclusive — selecting either clears all others
+  if(s==='alle'||s==='meh'){
+    activeStatuses.clear();
+    activeStatuses.add(s);
+  } else {
+    // har/bestill: remove alle and meh if present
+    activeStatuses.delete('alle');
+    activeStatuses.delete('meh');
+    if(activeStatuses.has(s)) activeStatuses.delete(s);
+    else activeStatuses.add(s);
+    // if nothing left, default back to alle
+    if(activeStatuses.size===0) activeStatuses.add('alle');
+  }
+  updateToolbar();render();
+}
+function resetFilters(){activeTypes.clear();activeStatuses.clear();activeStatuses.add('alle');document.getElementById('sort-by').value='custom';sortBy='custom';sortAsc=false;document.getElementById('sort-dir-btn').textContent='↓';updateToolbar();render();}
 function updateToolbar(){
   ['red','white','rose','other'].forEach(t=>{const b=document.getElementById('tb-'+t);b.className='toggle-btn'+(activeTypes.has(t)?' active-type-'+t:'');});
-  ['all','pending','boring'].forEach(s=>{const b=document.getElementById('tb-'+s);b.className='toggle-btn'+(activeStatuses.has(s)?' active-status':'');});
+  ['alle','har','bestill','meh'].forEach(s=>{const b=document.getElementById('tb-'+s);if(b)b.className='toggle-btn'+(activeStatuses.has(s)?' active-status':'');});
 }
 function onSortChange(){sortBy=document.getElementById('sort-by').value;render();}
 function toggleSortDir(){sortAsc=!sortAsc;document.getElementById('sort-dir-btn').textContent=sortAsc?'↑':'↓';render();}
 
 /* ── STATUS LOGIC ── */
-// 3 statuses: 'pending' (not tasted), 'all' (tasted/normal), 'boring'
-// A wine with note or rating >= 1 loses pending status → becomes 'all'
-// boring only shows when boring filter active
-function effectiveStatus(w){return w.status||'pending';}
+// Statuses: null/undefined = no status, 'har', 'bestill', 'meh'
+// A wine with no status shows under 'alle' (all except meh)
+// 'meh' wines only show when meh filter active
+function effectiveStatus(w){return w.status||null;}
 function hasTasted(w){return !!(w.rating||(w.note&&w.note.trim()));}
+function wineMatchesFilter(w){
+  const st=effectiveStatus(w);
+  if(activeStatuses.has('alle')) return st!=='meh';
+  if(activeStatuses.has('meh'))  return st==='meh';
+  // har/bestill combination
+  return activeStatuses.has(st);
+}
 
 /* ── IMAGE ── */
 function getImgSrc(w){
@@ -386,6 +452,51 @@ function openLightbox(uid){
 }
 function closeLightbox(){document.getElementById('lightbox-container').innerHTML='';}
 
+/* ── PROFILE CIRCLES ── */
+function profileCircleSVG(pct, color, sz=18){
+  // Draw a pie/arc circle filled pct% (0-100)
+  if(pct===null||pct===undefined) return '';
+  const r=sz/2, cx=r, cy=r, radius=r-1.5;
+  if(pct>=100){
+    return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${color}" stroke="#ddd" stroke-width="1"/>
+    </svg>`;
+  }
+  if(pct<=0){
+    return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+    </svg>`;
+  }
+  const angle=(pct/100)*Math.PI*2;
+  const x=cx+radius*Math.sin(angle);
+  const y=cy-radius*Math.cos(angle);
+  const large=pct>50?1:0;
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+    <path d="M${cx},${cy} L${cx},${cy-radius} A${radius},${radius} 0 ${large},1 ${x},${y} Z" fill="${color}"/>
+    <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#ddd" stroke-width="1"/>
+  </svg>`;
+}
+function profileCirclesHTML(w, small=true){
+  const sz=small?14:22;
+  const profiles=[
+    {key:'fylde',   label:'F',  labelFull:'Fylde',   color:'#8B5CF6'},
+    {key:'friskhet',label:'Fr', labelFull:'Friskhet',color:'#06B6D4'},
+    {key:'sodme',   label:'S',  labelFull:'Sødme',   color:'#F59E0B'},
+  ];
+  const anyVal=profiles.some(p=>w[p.key]!=null);
+  if(!anyVal) return '';
+  const circles=profiles.map(p=>{
+    const val=w[p.key];
+    const isEmpty=val==null;
+    return `<div class="profile-circle-wrap${isEmpty?' empty':''}">
+      ${isEmpty?`<div style="width:${sz}px;height:${sz}px;"></div>`:profileCircleSVG(val,p.color,sz)}
+      <span class="${small?'profile-label':'profile-label-full'}">${small?p.label:p.labelFull}</span>
+    </div>`;
+  }).join('');
+  return `<div class="profile-circles">${circles}</div>`;
+}
+
 /* ── DICE ── */
 function diceSVG(n,sz=18){
   const dp={1:[[.5,.5]],2:[[.3,.3],[.7,.7]],3:[[.3,.3],[.5,.5],[.7,.7]],4:[[.3,.3],[.7,.3],[.3,.7],[.7,.7]],5:[[.3,.3],[.7,.3],[.5,.5],[.3,.7],[.7,.7]],6:[[.3,.25],[.7,.25],[.3,.5],[.7,.5],[.3,.75],[.7,.75]]};
@@ -409,24 +520,24 @@ function nextId(){return wines.length?Math.max(...wines.map(w=>w.id))+1:1;}
 
 /* ── DEFAULT WINES ── */
 const defaultWines=[
-  {id:1,name:'Fun Fuel Riesling',region:'Rheinhessen, Tyskland',grape:'Riesling',type:'white',price:145,priceDate:'APR26',vmpId:'16349201',vivinoHash:null,status:'pending',taste:'Eple, sitrus, litt drops',food:'Aperitiff, sushi, spicy mat',expertScore:3,expertSource:'GV',desc:'Frisk og lett med eple og sitrus. Litt sødme som gjør den enkel å like. Ukrevende hverdagsvin til budsjettprisen.',note:'',rating:0,updatedAt:1},
-  {id:2,name:'Seckinger Deidesheim Mäushöhle Riesling Erste Lage 2025',region:'Pfalz, Tyskland',grape:'Riesling',type:'white',price:198,priceDate:'APR26',vmpId:'19705401',vivinoHash:null,status:'pending',taste:'Lime, gul steinfrukt, eple, flintrøyk',food:'Skalldyr, fisk, lyst kjøtt',expertScore:5,expertSource:'GV',desc:'Stram og frisk med lime og gul steinfrukt. Spontanfermentert og lagret på fat gir kompleksitet. Ren og fokusert vin som sitter lenge — høy kvalitet for prisen.',note:'',rating:0,updatedAt:1},
-  {id:3,name:'Poggio Allora Vernaccia di San Gimignano 2024',region:'Toscana, Italia',grape:'Vernaccia',type:'white',price:181,priceDate:'APR26',vmpId:null,vivinoHash:'QI7EheAHRnygnrtSuYPk4A',status:'pending',taste:'Sitron, mandel, urter',food:'Fisk, pasta, salater',expertScore:4,expertSource:'GV',desc:'Tørr med sitrus og et lite bitt av mandel. Litt rund i kantene. Fin balanse mellom friskhet og mykhet — god hverdagsvin til maten.',note:'',rating:0,updatedAt:1},
-  {id:4,name:'Brandini Langhe Arneis La Margherite 2024',region:'Piemonte, Italia',grape:'Arneis',type:'white',price:250,priceDate:'APR26',vmpId:null,vivinoHash:'SZn967qJSJWokzj5AIfqtw',status:'pending',taste:'Pære, blomster, nøtter',food:'Kylling, kremet pasta, skalldyr',expertScore:4,expertSource:'GV',desc:'Smaker av moden pære og blomster med nøttepreget avslutning. Litt rund og fyldig — har nok kropp til å løfte kremet mat.',note:'',rating:0,updatedAt:1},
-  {id:5,name:'Gmeinböck Grüner Veltliner Muschelkalk',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:169,priceDate:'APR26',vmpId:null,vivinoHash:'UZ3PnV5AQTClBCF2L850MQ',status:'pending',taste:'Sitrus, pepper, mineral, frisk',food:'Fisk, salater, grønnsaker, kylling',expertScore:4,expertSource:'GV',desc:'Frisk og sprø med sitrus og et lite pepperpreg. Ren stil fra kalkholdig jord. Veldig allsidig til mat — beste kjøp i Grüner-kategorien.',note:'',rating:0,updatedAt:1},
-  {id:6,name:'Kracher Grüner Veltliner 2023',region:'Burgenland, Østerrike',grape:'Grüner Veltliner',type:'white',price:239,priceDate:'APR26',vmpId:null,vivinoHash:'lpYtigHwQWCuQpUDciJbYA',status:'pending',taste:'Sitrus, urter, hvit pepper, mineralsk',food:'Fisk, ost, grønnsaker',expertScore:4,expertSource:'GV',desc:'Strammere og mer konsentrert enn klassisk Grüner. Sitrus og urter med litt trykk og mineralitet. Føles mer seriøs og varer lenge.',note:'',rating:0,updatedAt:1},
-  {id:7,name:'Neustifter Exklusiv Grüner Veltliner',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:198,priceDate:'APR26',vmpId:'17151001',vivinoHash:null,status:'pending',taste:'Sitrus, pepper, melon, klassisk',food:'Salater, fisk, hvit kjøtt',expertScore:3,expertSource:'GV',desc:'Klassisk Grüner-stil med sitrus og litt pepper. Ren og balansert, litt fyldig avslutning. Ikke komplisert, men god og trygg.',note:'',rating:0,updatedAt:1},
-  {id:8,name:'Pfaffl Weinviertel Zeisen Grüner Veltliner 2020',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:254,priceDate:'APR26',vmpId:'10544901',vivinoHash:null,status:'pending',taste:'Moden frukt, krydder, urter, bitter avslutning',food:'Svin, asiatisk mat, kremet pasta',expertScore:4,expertSource:'GV',desc:'Litt rikere med moden frukt og krydder. Har mer tyngde enn de yngre Grünerne. Smaker mer og varer lengre — best av de fire til kraftigere mat.',note:'',rating:0,updatedAt:1},
-  {id:9,name:'Fontanafredda Solerose Langhe Rosato 2022',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera/Dolcetto',type:'rose',price:250,priceDate:'APR26',vmpId:'9741901',vivinoHash:null,status:'pending',taste:'Jordbær, bringebær, urter, frisk',food:'Sommermat, salater, fisk, antipasti',expertScore:4,expertSource:'GV',desc:'Frisk rosé med røde bær og litt urter. Tørr og elegant fra Piemonte. Sommerlig og lett å like — fungerer like godt alene som til mat.',note:'',rating:0,updatedAt:1},
-  {id:10,name:'Enzo Bartoli Langhe Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:175,priceDate:'APR26',vmpId:'11312001',vivinoHash:null,status:'pending',taste:'Kirsebær, roser, litt tannin',food:'Pizza, pasta, spekemat',expertScore:3,expertSource:'GV',desc:'Lys og frisk med kirsebær og rosduft. Litt tørr i munnen fra nebbiolo-tanniner. God og enkel inngang til druen uten å sprenge budsjettet.',note:'',rating:0,updatedAt:1},
-  {id:11,name:'Pietro di Campo Monferrato Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:179,priceDate:'APR26',vmpId:null,vivinoHash:'nK53OekCT9OFYELvCO9L6g',status:'pending',taste:'Røde bær, mild, enkel',food:'Pizza, pasta, enkel kjøttmat',expertScore:3,expertSource:'GV',desc:'Mild og ganske enkel. Litt røde bær og lite motstand. Mer volum enn opplevelse — 100cl gjør det til mye vin for pengene.',note:'',rating:0,updatedAt:1},
-  {id:12,name:'F.lli. Giacosa Langhe Nebbiolo Leunin 2023',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:219,priceDate:'APR26',vmpId:'7018701',vivinoHash:null,status:'pending',taste:'Kirsebær, nype, urter, fat',food:'Kjøtt, ost, sopp',expertScore:4,expertSource:'GV',desc:'Strammere med tydeligere tanniner og mer dybde. Kirsebær, nype og litt fat. Føles mer seriøs enn de enklere nebbioloane.',note:'',rating:0,updatedAt:1},
-  {id:13,name:'Malvirà Nudo Langhe Nebbiolo 2022',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:314,priceDate:'APR26',vmpId:'11847301',vivinoHash:null,status:'pending',taste:'Kirsebær, urter, tørket rose, tobakk',food:'Kjøtt, sopp, vilt',expertScore:5,expertSource:'GV',desc:'Ren og presis med dypere smak av kirsebær og urter. Stram, men balansert med lang avslutning. Best i nebbiolo-kategorien — verdt prisen.',note:'',rating:0,updatedAt:1},
-  {id:14,name:'Kaltern Alto Adige Edelvernatsch 2023',region:'Alto Adige, Italia',grape:'Schiava',type:'red',price:205,priceDate:'APR26',vmpId:null,vivinoHash:'_0j-tYkXQSW3uK3gy0pEtQ',status:'pending',taste:'Røde bær, saftig, blomster, lett',food:'Lunsj, spekemat, kylling, pizza',expertScore:3,expertSource:'GV',desc:'Svært lett og saftig med røde bær og blomsterduft. Nesten juice-aktig friskhet. Ukomplisert og sjarmerende — perfekt til lunsj eller lett sommermat.',note:'',rating:0,updatedAt:1},
-  {id:15,name:'Tedeschi Valpolicella Classico Lucchine 2024',region:'Veneto, Italia',grape:'Corvina/Corvinone/Rondinella',type:'red',price:194,priceDate:'APR26',vmpId:'5127201',vivinoHash:null,status:'pending',taste:'Kirsebær, urter, frisk, lett',food:'Pizza, pasta, enkel kjøttmat',expertScore:4,expertSource:'GV',desc:'Frisk og lett med kirsebær og urter. Klassisk Valpolicella fra pålitelig produsent. Veldig anvendelig til hverdagsmat.',note:'',rating:0,updatedAt:1},
-  {id:16,name:'Icardi Pafoj Langhe Rosso',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera',type:'red',price:265,priceDate:'APR26',vmpId:null,vivinoHash:'tRHAFYvOTGW8j_acZJuy4g',status:'pending',taste:'Mørke bær, myk, fyldig, litt vanilje',food:'Kjøttmat, gryte, pasta bolognese',expertScore:4,expertSource:'GV',desc:'Mykere og rundere med mørkere bær og litt fatkrydder. Litt mer fylde enn de enklere Langhe-vinene. Behagelig og lett å like til mat.',note:'',rating:0,updatedAt:1},
-  {id:17,name:'Fun Fuel Shiraz',region:'Sør-Afrika',grape:'Shiraz',type:'red',price:145,priceDate:'APR26',vmpId:'16274501',vivinoHash:null,status:'pending',taste:'Mørke bær, krydder, pepper, fyldig',food:'Grill, burger, sterk mat',expertScore:3,expertSource:'GV',desc:'Fyldig med mørke bær og litt krydder og pepper. Enkel i uttrykket men veldig lett å like. God budsjettvin til grillmat.',note:'',rating:0,updatedAt:1},
-  {id:18,name:'Dom. Wachau Glühwein',region:'Wachau, Østerrike',grape:'Rød blend',type:'other',price:null,priceDate:'APR26',vmpId:'11323501',vivinoHash:null,status:'pending',taste:'Søt, kanel, nellik, appelsin',food:'Varm drikke, julemat, kos',expertScore:3,expertSource:'GV',desc:'Søt og krydret med kanel, nellik og appelsin. Varm og fyldig gløgg fra Wachau. Mer kos enn vinopplevelse.',note:'',rating:0,updatedAt:1}
+  {id:1,name:'Fun Fuel Riesling',region:'Rheinhessen, Tyskland',grape:'Riesling',type:'white',price:145,priceDate:'APR26',vmpId:'16349201',vivinoHash:null,status:null,taste:'Eple, sitrus, litt drops',food:'Aperitiff, sushi, spicy mat',expertScore:3,expertSource:'GV',desc:'Frisk og lett med eple og sitrus. Litt sødme som gjør den enkel å like. Ukrevende hverdagsvin til budsjettprisen.',note:'',rating:0,updatedAt:1},
+  {id:2,name:'Seckinger Deidesheim Mäushöhle Riesling Erste Lage 2025',region:'Pfalz, Tyskland',grape:'Riesling',type:'white',price:198,priceDate:'APR26',vmpId:'19705401',vivinoHash:null,status:null,taste:'Lime, gul steinfrukt, eple, flintrøyk',food:'Skalldyr, fisk, lyst kjøtt',expertScore:5,expertSource:'GV',desc:'Stram og frisk med lime og gul steinfrukt. Spontanfermentert og lagret på fat gir kompleksitet. Ren og fokusert vin som sitter lenge — høy kvalitet for prisen.',note:'',rating:0,updatedAt:1},
+  {id:3,name:'Poggio Allora Vernaccia di San Gimignano 2024',region:'Toscana, Italia',grape:'Vernaccia',type:'white',price:181,priceDate:'APR26',vmpId:null,vivinoHash:'QI7EheAHRnygnrtSuYPk4A',status:null,taste:'Sitron, mandel, urter',food:'Fisk, pasta, salater',expertScore:4,expertSource:'GV',desc:'Tørr med sitrus og et lite bitt av mandel. Litt rund i kantene. Fin balanse mellom friskhet og mykhet — god hverdagsvin til maten.',note:'',rating:0,updatedAt:1},
+  {id:4,name:'Brandini Langhe Arneis La Margherite 2024',region:'Piemonte, Italia',grape:'Arneis',type:'white',price:250,priceDate:'APR26',vmpId:null,vivinoHash:'SZn967qJSJWokzj5AIfqtw',status:null,taste:'Pære, blomster, nøtter',food:'Kylling, kremet pasta, skalldyr',expertScore:4,expertSource:'GV',desc:'Smaker av moden pære og blomster med nøttepreget avslutning. Litt rund og fyldig — har nok kropp til å løfte kremet mat.',note:'',rating:0,updatedAt:1},
+  {id:5,name:'Gmeinböck Grüner Veltliner Muschelkalk',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:169,priceDate:'APR26',vmpId:null,vivinoHash:'UZ3PnV5AQTClBCF2L850MQ',status:null,taste:'Sitrus, pepper, mineral, frisk',food:'Fisk, salater, grønnsaker, kylling',expertScore:4,expertSource:'GV',desc:'Frisk og sprø med sitrus og et lite pepperpreg. Ren stil fra kalkholdig jord. Veldig allsidig til mat — beste kjøp i Grüner-kategorien.',note:'',rating:0,updatedAt:1},
+  {id:6,name:'Kracher Grüner Veltliner 2023',region:'Burgenland, Østerrike',grape:'Grüner Veltliner',type:'white',price:239,priceDate:'APR26',vmpId:null,vivinoHash:'lpYtigHwQWCuQpUDciJbYA',status:null,taste:'Sitrus, urter, hvit pepper, mineralsk',food:'Fisk, ost, grønnsaker',expertScore:4,expertSource:'GV',desc:'Strammere og mer konsentrert enn klassisk Grüner. Sitrus og urter med litt trykk og mineralitet. Føles mer seriøs og varer lenge.',note:'',rating:0,updatedAt:1},
+  {id:7,name:'Neustifter Exklusiv Grüner Veltliner',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:198,priceDate:'APR26',vmpId:'17151001',vivinoHash:null,status:null,taste:'Sitrus, pepper, melon, klassisk',food:'Salater, fisk, hvit kjøtt',expertScore:3,expertSource:'GV',desc:'Klassisk Grüner-stil med sitrus og litt pepper. Ren og balansert, litt fyldig avslutning. Ikke komplisert, men god og trygg.',note:'',rating:0,updatedAt:1},
+  {id:8,name:'Pfaffl Weinviertel Zeisen Grüner Veltliner 2020',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:254,priceDate:'APR26',vmpId:'10544901',vivinoHash:null,status:null,taste:'Moden frukt, krydder, urter, bitter avslutning',food:'Svin, asiatisk mat, kremet pasta',expertScore:4,expertSource:'GV',desc:'Litt rikere med moden frukt og krydder. Har mer tyngde enn de yngre Grünerne. Smaker mer og varer lengre — best av de fire til kraftigere mat.',note:'',rating:0,updatedAt:1},
+  {id:9,name:'Fontanafredda Solerose Langhe Rosato 2022',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera/Dolcetto',type:'rose',price:250,priceDate:'APR26',vmpId:'9741901',vivinoHash:null,status:null,taste:'Jordbær, bringebær, urter, frisk',food:'Sommermat, salater, fisk, antipasti',expertScore:4,expertSource:'GV',desc:'Frisk rosé med røde bær og litt urter. Tørr og elegant fra Piemonte. Sommerlig og lett å like — fungerer like godt alene som til mat.',note:'',rating:0,updatedAt:1},
+  {id:10,name:'Enzo Bartoli Langhe Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:175,priceDate:'APR26',vmpId:'11312001',vivinoHash:null,status:null,taste:'Kirsebær, roser, litt tannin',food:'Pizza, pasta, spekemat',expertScore:3,expertSource:'GV',desc:'Lys og frisk med kirsebær og rosduft. Litt tørr i munnen fra nebbiolo-tanniner. God og enkel inngang til druen uten å sprenge budsjettet.',note:'',rating:0,updatedAt:1},
+  {id:11,name:'Pietro di Campo Monferrato Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:179,priceDate:'APR26',vmpId:null,vivinoHash:'nK53OekCT9OFYELvCO9L6g',status:null,taste:'Røde bær, mild, enkel',food:'Pizza, pasta, enkel kjøttmat',expertScore:3,expertSource:'GV',desc:'Mild og ganske enkel. Litt røde bær og lite motstand. Mer volum enn opplevelse — 100cl gjør det til mye vin for pengene.',note:'',rating:0,updatedAt:1},
+  {id:12,name:'F.lli. Giacosa Langhe Nebbiolo Leunin 2023',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:219,priceDate:'APR26',vmpId:'7018701',vivinoHash:null,status:null,taste:'Kirsebær, nype, urter, fat',food:'Kjøtt, ost, sopp',expertScore:4,expertSource:'GV',desc:'Strammere med tydeligere tanniner og mer dybde. Kirsebær, nype og litt fat. Føles mer seriøs enn de enklere nebbioloane.',note:'',rating:0,updatedAt:1},
+  {id:13,name:'Malvirà Nudo Langhe Nebbiolo 2022',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:314,priceDate:'APR26',vmpId:'11847301',vivinoHash:null,status:null,taste:'Kirsebær, urter, tørket rose, tobakk',food:'Kjøtt, sopp, vilt',expertScore:5,expertSource:'GV',desc:'Ren og presis med dypere smak av kirsebær og urter. Stram, men balansert med lang avslutning. Best i nebbiolo-kategorien — verdt prisen.',note:'',rating:0,updatedAt:1},
+  {id:14,name:'Kaltern Alto Adige Edelvernatsch 2023',region:'Alto Adige, Italia',grape:'Schiava',type:'red',price:205,priceDate:'APR26',vmpId:null,vivinoHash:'_0j-tYkXQSW3uK3gy0pEtQ',status:null,taste:'Røde bær, saftig, blomster, lett',food:'Lunsj, spekemat, kylling, pizza',expertScore:3,expertSource:'GV',desc:'Svært lett og saftig med røde bær og blomsterduft. Nesten juice-aktig friskhet. Ukomplisert og sjarmerende — perfekt til lunsj eller lett sommermat.',note:'',rating:0,updatedAt:1},
+  {id:15,name:'Tedeschi Valpolicella Classico Lucchine 2024',region:'Veneto, Italia',grape:'Corvina/Corvinone/Rondinella',type:'red',price:194,priceDate:'APR26',vmpId:'5127201',vivinoHash:null,status:null,taste:'Kirsebær, urter, frisk, lett',food:'Pizza, pasta, enkel kjøttmat',expertScore:4,expertSource:'GV',desc:'Frisk og lett med kirsebær og urter. Klassisk Valpolicella fra pålitelig produsent. Veldig anvendelig til hverdagsmat.',note:'',rating:0,updatedAt:1},
+  {id:16,name:'Icardi Pafoj Langhe Rosso',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera',type:'red',price:265,priceDate:'APR26',vmpId:null,vivinoHash:'tRHAFYvOTGW8j_acZJuy4g',status:null,taste:'Mørke bær, myk, fyldig, litt vanilje',food:'Kjøttmat, gryte, pasta bolognese',expertScore:4,expertSource:'GV',desc:'Mykere og rundere med mørkere bær og litt fatkrydder. Litt mer fylde enn de enklere Langhe-vinene. Behagelig og lett å like til mat.',note:'',rating:0,updatedAt:1},
+  {id:17,name:'Fun Fuel Shiraz',region:'Sør-Afrika',grape:'Shiraz',type:'red',price:145,priceDate:'APR26',vmpId:'16274501',vivinoHash:null,status:null,taste:'Mørke bær, krydder, pepper, fyldig',food:'Grill, burger, sterk mat',expertScore:3,expertSource:'GV',desc:'Fyldig med mørke bær og litt krydder og pepper. Enkel i uttrykket men veldig lett å like. God budsjettvin til grillmat.',note:'',rating:0,updatedAt:1},
+  {id:18,name:'Dom. Wachau Glühwein',region:'Wachau, Østerrike',grape:'Rød blend',type:'other',price:null,priceDate:'APR26',vmpId:'11323501',vivinoHash:null,status:null,taste:'Søt, kanel, nellik, appelsin',food:'Varm drikke, julemat, kos',expertScore:3,expertSource:'GV',desc:'Søt og krydret med kanel, nellik og appelsin. Varm og fyldig gløgg fra Wachau. Mer kos enn vinopplevelse.',note:'',rating:0,updatedAt:1}
 ];
 
 /* ── FILTER + SORT ── */
@@ -440,13 +551,7 @@ function getFiltered(){
   // combinations work independently
   let list=wines.filter(w=>{
     const typeOk=activeTypes.size===0||activeTypes.has(w.type);
-    const st=effectiveStatus(w);
-    let statusOk;
-    if(activeStatuses.size===0){
-      statusOk=st!=='boring';
-    } else {
-      statusOk=activeStatuses.has(st);
-    }
+    const statusOk=wineMatchesFilter(w);
     const searchOk=!q||[w.name,w.grape,w.region,w.taste,w.desc,w.note,w.food].some(s=>s&&s.toLowerCase().includes(q));
     return typeOk&&statusOk&&searchOk;
   });
@@ -464,6 +569,7 @@ function getFiltered(){
     else if(sortBy==='price'){va=a.price||0;vb=b.price||0;}
     else if(sortBy==='expert'){va=a.expertScore||0;vb=b.expertScore||0;}
     else if(sortBy==='rating'){va=a.rating||0;vb=b.rating||0;}
+    else if(sortBy==='recent'){va=a.updatedAt||0;vb=b.updatedAt||0;}
     else{va=a.id;vb=b.id;}
     if(va<vb)return sortAsc?-1:1;
     if(va>vb)return sortAsc?1:-1;
@@ -504,6 +610,7 @@ function cardHTML(w,draggable=false){
   const badge=st==='pending'?'<span class="status-badge badge-pending">Ikke smakt</span>':
     st==='boring'?'<span class="status-badge badge-boring">Boring</span>':'';
   const diceRow=w.expertScore?`<div class="card-dice-row">${diceSVG(w.expertScore,14)}<span style="font-size:9px;color:#999;font-weight:600;">${scoreTag(w)}</span></div>`:'';
+  const profRow=profileCirclesHTML(w,true);
   const userStars=w.rating?`<div style="display:flex;gap:1px;margin-bottom:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:10px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:'';
   const dragAttr=draggable?`draggable="true" data-id="${w.id}"`:'' ;
   const handle=draggable?`<div class="drag-handle">⠿</div>`:'';
@@ -559,9 +666,9 @@ function openModal(id){
 function renderModal(w, editMode=false){
   const st=effectiveStatus(w);
   const tasted=hasTasted(w);
-  const boringBtn=!tasted&&st!=='boring'?`<button class="action-btn amber" onclick="setStatus(${w.id},'boring')">Boring</button>`:'';
-  const unboringBtn=st==='boring'?`<button class="action-btn" onclick="setStatus(${w.id},'pending')">Fjern boring</button>`:'';
-  const pendingBtn=!tasted&&st==='all'?`<button class="action-btn" onclick="setStatus(${w.id},'pending')">Ikke smakt</button>`:'';
+  // status buttons — har/bestill toggles
+  const harBtn=st!=='meh'?`<button class="action-btn${st==='har'?' green':''}" onclick="toggleWineStatus(${w.id},'har')">${st==='har'?'✓ Har':'Har'}</button>`:'';
+  const bestillBtn=st!=='meh'?`<button class="action-btn${st==='bestill'?' blue':''}" onclick="toggleWineStatus(${w.id},'bestill')">${st==='bestill'?'✓ Bestill':'Bestill'}</button>`:'';
   const imgBtns=`<div class="img-btn-row">
     <button class="img-btn" onclick="triggerImgUpload(${w.id})">📂 Endre foto</button>
     <button class="img-btn" onclick="findPhoto(${w.id})">🔍 Finn foto</button>
@@ -612,7 +719,7 @@ function renderModal(w, editMode=false){
     <textarea class="tasting-note" id="modal-note" rows="3" placeholder="Skriv egne notater her..." style="${IS}resize:vertical;">${w.note||''}</textarea>
     <div id="note-saved" style="min-height:14px;font-size:10px;color:#2d6a2d;margin-top:2px;"></div>
   ` : `
-    ${st==='boring'?`<div class="dismiss-warning"><span>⚠️</span><span>Merket som boring.</span></div>`:''}
+    ${st==='meh'?`<div style="background:#f0f0f0;border:1px solid #ddd;border-radius:7px;padding:8px 10px;font-size:11px;color:#999;margin-bottom:8px;display:flex;gap:7px;"><span>😶</span><span>Merket som Meh.</span></div>`:''}
     <div class="modal-title">${w.name}</div>
     <div class="modal-meta">${w.grape} · ${w.region} · ${typeLabel(w.type)}</div>
     <div class="detail-grid">
@@ -623,6 +730,7 @@ function renderModal(w, editMode=false){
     </div>
     ${w.vmpId?`<a href="https://www.vinmonopolet.no/p/${w.vmpId}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#1a56b0;text-decoration:underline;">Se på Vinmonopolet ↗</a>`:''}
     <div class="desc-text">${w.desc}</div>
+    ${profileCirclesHTML(w,false)?`<div style="margin-top:10px;">${profileCirclesHTML(w,false)}</div>`:''}
     ${w.note?`<div style="margin-top:8px;font-size:12px;color:#666;background:#f9f8f5;border-radius:7px;padding:8px 10px;border:1px solid #e5e5e5;"><span style="font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:3px;">Mitt notat</span>${w.note}</div>`:''}
     ${w.rating?`<div style="margin-top:6px;display:flex;gap:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:18px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:''}
   `;
@@ -631,7 +739,7 @@ function renderModal(w, editMode=false){
     <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${w.id})">Lagre</button>
     <button class="action-btn" onclick="cancelEdit(${w.id})">Avbryt</button>
   ` : `
-    ${boringBtn}${unboringBtn}${pendingBtn}
+    ${harBtn}${bestillBtn}
     <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
     <button class="action-btn" style="margin-left:auto;" onclick="closeModal()">Lukk</button>
   `;
@@ -743,11 +851,21 @@ async function saveEdit(wineId){
   w.rating = editRating;
   // if price was manually edited, update priceUpdatedAt
   if(newPrice && newPrice!==oldPrice) w.priceUpdatedAt=Date.now();
-  // promote status if now tasted
-  if(hasTasted(w) && w.status==='pending') w.status='all';
   isDirty=false;
   await saveWine(w);
   doCloseModal();
+}
+
+/* ── WINE STATUS TOGGLE ── */
+async function toggleWineStatus(id, status){
+  const w=wines.find(x=>x.id===id);if(!w)return;
+  if(w.status===status){
+    w.status=null; // toggle off
+  } else {
+    w.status=status;
+  }
+  await saveWine(w);
+  renderModal(w, document.getElementById('edit-save-btn')!==null);
 }
 
 /* ── STARS ── */
@@ -800,11 +918,9 @@ async function saveNote(id){
   // re-render to update status badges/buttons
   renderModal(w);
 }
+// setStatus kept for compatibility
 async function setStatus(id,status){
-  const w=wines.find(x=>x.id===id);if(!w)return;
-  const el=document.getElementById('modal-note');if(el)w.note=el.value;
-  w.rating=editRating;w.status=status;
-  await saveWine(w);renderModal(w);
+  await toggleWineStatus(id,status);
 }
 
 /* ── MODAL CLOSE ── */
@@ -883,7 +999,7 @@ async function addManualWine(){
   const vivRaw=document.getElementById('nw-vivino').value.trim();let vivinoHash=null;
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);vivinoHash=m?m[1]:vivRaw;}
   const score=document.getElementById('nw-score').value;
-  const newWine={id:nextId(),name,grape:document.getElementById('nw-grape').value.trim()||'—',region:document.getElementById('nw-region').value.trim()||'—',type:document.getElementById('nw-type').value,price:parseFloat(document.getElementById('nw-price').value)||null,priceDate:nowLabel(),vmpId:document.getElementById('nw-vmpid').value.trim()||null,vivinoHash,status:'pending',taste:document.getElementById('nw-taste').value.trim()||'—',food:document.getElementById('nw-food').value.trim()||'—',expertScore:score?parseInt(score):null,expertSource:document.getElementById('nw-source').value,desc:document.getElementById('nw-desc').value.trim()||'',note:'',rating:0,updatedAt:Date.now()};
+  const newWine={id:nextId(),name,grape:document.getElementById('nw-grape').value.trim()||'—',region:document.getElementById('nw-region').value.trim()||'—',type:document.getElementById('nw-type').value,price:parseFloat(document.getElementById('nw-price').value)||null,priceDate:nowLabel(),vmpId:document.getElementById('nw-vmpid').value.trim()||null,vivinoHash,status:null,taste:document.getElementById('nw-taste').value.trim()||'—',food:document.getElementById('nw-food').value.trim()||'—',expertScore:score?parseInt(score):null,expertSource:document.getElementById('nw-source').value,desc:document.getElementById('nw-desc').value.trim()||'',note:'',rating:0,updatedAt:Date.now()};
   showManual=false;document.getElementById('add-form-container').style.display='none';document.getElementById('add-form-container').innerHTML='';
   await saveWine(newWine);
 }
