@@ -262,9 +262,25 @@ async function pushCloud(){
   if(!res.ok)throw new Error('HTTP '+res.status);
 }
 function mergeWines(local,cloud){
+  // Two independent timestamps:
+  // updatedAt      = user data (note, rating, status, type, image)
+  // priceUpdatedAt = price fields (price, priceDate)
+  // Each field group: newest timestamp wins — they never interfere
   const map={};
   cloud.forEach(w=>map[w.id]={...w});
-  local.forEach(w=>{if(!map[w.id])map[w.id]={...w};else if((w.updatedAt||0)>(map[w.id].updatedAt||0))map[w.id]={...w};});
+  local.forEach(w=>{
+    if(!map[w.id]){map[w.id]={...w};return;}
+    const c=map[w.id];
+    // merge user data fields
+    if((w.updatedAt||0)>=(c.updatedAt||0)){
+      c.note=w.note; c.rating=w.rating; c.status=w.status;
+      c.type=w.type; c.localImg=w.localImg; c.updatedAt=w.updatedAt;
+    }
+    // merge price fields
+    if((w.priceUpdatedAt||0)>=(c.priceUpdatedAt||0)){
+      c.price=w.price; c.priceDate=w.priceDate; c.priceUpdatedAt=w.priceUpdatedAt;
+    }
+  });
   return Object.values(map).sort((a,b)=>a.id-b.id);
 }
 async function syncWithCloud(){
@@ -282,6 +298,7 @@ async function syncWithCloud(){
 }
 async function saveWine(wine){
   wine.updatedAt=Date.now();
+  // Note: priceUpdatedAt is NOT touched here — only set by price update scripts
   const idx=wines.findIndex(w=>w.id===wine.id);
   if(idx>=0)wines[idx]=wine;else{wines.push(wine);customOrder.push(wine.id);}
   saveLocal();render();
@@ -569,30 +586,17 @@ function renderModal(w){
         </div>
         ${vmpBtn}
         <div class="desc-text">${w.desc}</div>
-        <div class="tasting-label">Min vurdering (1–6 stjerner)</div>
-        <div class="stars6-edit" id="modal-stars"></div>
-        <div class="tasting-label">Smaksnotat</div>
-        <textarea class="tasting-note" id="modal-note" placeholder="Skriv egne notater her...">${w.note||''}</textarea>
-        <div id="note-saved"></div>
+        ${w.note?`<div style="margin-top:8px;font-size:12px;color:#666;background:#f9f8f5;border-radius:7px;padding:8px 10px;border:1px solid #e5e5e5;"><span style="font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:3px;">Mitt notat</span>${w.note}</div>`:''}
+        ${w.rating?`<div style="margin-top:6px;display:flex;gap:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:18px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:''}
       </div>
       <div class="modal-actions">
         ${boringBtn}${unboringBtn}${pendingBtn}
         <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
-        <button class="action-btn" id="save-note-btn" onclick="saveNote(${w.id})">Lagre notat</button>
         <button class="action-btn" style="margin-left:auto;" onclick="closeModal()">Lukk</button>
       </div>
     </div>
   </div>`;
-  // capture originals for dirty detection
   isDirty=false;
-  originalNote=w.note||'';
-  originalRating=w.rating||0;
-  renderStars();
-  // wire up dirty detection on textarea
-  setTimeout(()=>{
-    const ta=document.getElementById('modal-note');
-    if(ta) ta.addEventListener('input',()=>markDirty());
-  },0);
 }
 
 /* ── PHOTO FUNCTIONS ── */
@@ -637,7 +641,7 @@ function openEditMode(id){
   const srcOpts=[['GV','GV — Generell vurdering'],['IT','IT — Ingvild Tennfjord']].map(([v,l])=>`<option value="${v}"${w.expertSource===v?' selected':''}>${l}</option>`).join('');
   const sec=document.createElement('div');sec.id='edit-section';sec.className='edit-form-section';
   sec.innerHTML=`
-    <div class="tasting-label" style="margin-top:0;">Rediger vininfo</div>
+    <div class="tasting-label" style="margin-top:0;">Rediger</div>
     <div class="edit-row"><input id="ed-name" value="${w.name}" placeholder="Navn"/></div>
     <div class="edit-row"><input id="ed-grape" value="${w.grape}" placeholder="Drue"/><input id="ed-region" value="${w.region}" placeholder="Region"/></div>
     <div class="edit-row"><select id="ed-type">${typeOpts}</select><input id="ed-price" type="number" value="${w.price||''}" placeholder="Pris (kr)"/></div>
@@ -651,16 +655,34 @@ function openEditMode(id){
     </div>
     <div class="edit-row"><input id="ed-vmpid" value="${w.vmpId||''}" placeholder="VMP-nr (bilde)"/><input id="ed-vivino" value="${w.vivinoHash||''}" placeholder="Vivino-hash (bilde)"/></div>
     ${w.localImg?`<div style="font-size:11px;color:#888;margin-bottom:6px;">📷 Egenlastet bilde er aktivt. <button onclick="removeLocalImg(${id})" style="font-size:11px;color:#a32d2d;background:none;border:none;cursor:pointer;padding:0;">Fjern</button></div>`:''}
+    <div class="tasting-label" style="margin-top:8px;">Min vurdering (1–6 stjerner)</div>
+    <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
+    <div class="tasting-label">Smaksnotat</div>
+    <textarea class="tasting-note" id="modal-note" placeholder="Skriv egne notater her..." style="margin-bottom:4px;">${w.note||''}</textarea>
+    <div id="note-saved" style="min-height:14px;"></div>
     <div style="display:flex;gap:7px;margin-top:4px;">
-      <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${id})">✓ Lagre</button>
-      <button class="action-btn" onclick="document.getElementById('edit-section').remove()">Avbryt</button>
+      <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${id})">Lagre</button>
+      <button class="action-btn" onclick="cancelEdit()">Avbryt</button>
     </div>`;
   body.appendChild(sec);
-  // wire dirty on all edit inputs
-  sec.querySelectorAll('input,select,textarea').forEach(el=>{
-    el.addEventListener('input',()=>{isDirty=true;const b=document.getElementById('edit-save-btn');if(b)b.className='action-btn green dirty';});
-    el.addEventListener('change',()=>{isDirty=true;const b=document.getElementById('edit-save-btn');if(b)b.className='action-btn green dirty';});
-  });
+  // wire dirty + render stars + capture originals
+  isDirty=false;
+  originalNote=w.note||'';
+  originalRating=w.rating||0;
+  editRating=w.rating||0;
+  renderStars();
+  setTimeout(()=>{
+    const ta=document.getElementById('modal-note');
+    if(ta) ta.addEventListener('input',()=>markDirty());
+    sec.querySelectorAll('input,select,textarea').forEach(el=>{
+      el.addEventListener('input',()=>markDirty());
+      el.addEventListener('change',()=>markDirty());
+    });
+  },0);
+}
+function cancelEdit(){
+  isDirty=false;
+  const sec=document.getElementById('edit-section');if(sec)sec.remove();
 }
 async function removeLocalImg(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
@@ -685,6 +707,11 @@ async function saveEdit(id){
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);w.vivinoHash=m?m[1]:vivRaw;}else w.vivinoHash=null;
   w.note=document.getElementById('modal-note')?.value||w.note;
   w.rating=editRating;
+  // if price was manually edited, update priceUpdatedAt so this wins over scripts
+  const newPrice=parseFloat(g('ed-price'));
+  if(newPrice&&newPrice!==w.price) w.priceUpdatedAt=Date.now();
+  // promote status if now tasted
+  if(hasTasted(w)&&w.status==='pending') w.status='all';
   isDirty=false;
   await saveWine(w);renderModal(w);
 }
@@ -700,12 +727,11 @@ function renderStars(){
 /* ── DIRTY DETECTION ── */
 function markDirty(){
   const note=document.getElementById('modal-note')?.value||'';
-  // dirty if note or rating changed from originals
-  const dirty=(note!==originalNote)||(editRating!==originalRating);
+  const dirty=(note!==originalNote)||(editRating!==originalRating)||
+    document.getElementById('ed-name')!==null; // any edit field present = dirty
   isDirty=dirty;
-  const btn=document.getElementById('save-note-btn');
-  if(btn) btn.className='action-btn'+(dirty?' dirty':'');
-  // live status update: if tasted now, remove 'ikke smakt' visually
+  const btn=document.getElementById('edit-save-btn');
+  if(btn) btn.className='action-btn green'+(dirty?' dirty':'');
   updateLiveStatus();
 }
 function updateLiveStatus(){
@@ -760,16 +786,24 @@ function confirmClose(callback){
   // remove any existing confirm
   const existing=document.getElementById('close-confirm');
   if(existing){existing.remove();return;}
+  // Insert confirm banner at TOP of modal body, not bottom
+  const modalBody=document.querySelector('.modal-body');
+  const targetContainer=modalBody||actions;
   const div=document.createElement('div');
   div.id='close-confirm';
-  div.style.cssText='width:100%;display:flex;align-items:center;gap:8px;padding:6px 0 0;flex-wrap:wrap;';
-  div.innerHTML=`<span style="font-size:11px;color:#666;flex:1;">Ulagrede endringer — lagre?</span>
+  div.style.cssText='background:#FFF3DC;border:1px solid #f0d080;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+  div.innerHTML=`<span style="font-size:12px;color:#664400;flex:1;font-weight:500;">⚠ Ulagrede endringer</span>
     <button class="action-btn green" onclick="confirmSaveClose()">Ja, lagre</button>
     <button class="action-btn red" onclick="doCloseModal()">Nei, forkast</button>`;
-  actions.appendChild(div);
+  if(modalBody) modalBody.insertBefore(div, modalBody.firstChild);
+  else actions.appendChild(div);
 }
 async function confirmSaveClose(){
-  if(selectedId){await saveNote(selectedId);}
+  if(selectedId){
+    const editSec=document.getElementById('edit-section');
+    if(editSec) await saveEdit(selectedId);
+    else await saveNote(selectedId);
+  }
   doCloseModal();
 }
 function closeModal(e){
