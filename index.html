@@ -302,7 +302,18 @@ async function saveWine(wine){
   const idx=wines.findIndex(w=>w.id===wine.id);
   if(idx>=0)wines[idx]=wine;else{wines.push(wine);customOrder.push(wine.id);}
   saveLocal();render();
-  if(navigator.onLine)await syncWithCloud();else setSyncBadge('wait','⏳ Venter på nett');
+  // Push directly to cloud — do NOT fetch+merge here, local is authoritative after a save
+  if(navigator.onLine){
+    setSyncBadge('wait','⟳ Lagrer...');
+    try{
+      await pushCloud();
+      setSyncBadge('ok','✓ Synkronisert');
+    }catch(e){
+      setSyncBadge('err','⚠ Offline');
+    }
+  } else {
+    setSyncBadge('wait','⏳ Venter på nett');
+  }
 }
 window.addEventListener('online',()=>syncWithCloud());
 window.addEventListener('offline',()=>setSyncBadge('wait','⏳ Offline'));
