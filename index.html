@@ -200,6 +200,10 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
         <option value="expert">Terningkast</option>
         <option value="rating">Mine stjerner</option>
         <option value="recent">Sist endret</option>
+      <option value="fylde">Fylde</option>
+      <option value="friskhet">Friskhet</option>
+      <option value="sodme">Sødme</option>
+      <option value="garvestoff">Garvestoff</option>
       </select>
       <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Bytt retning">↓</button>
       <button class="toggle-btn" onclick="resetFilters()">✕ Nullstill</button>
@@ -595,6 +599,10 @@ function getFiltered(){
     else if(sortBy==='expert'){va=a.expertScore||0;vb=b.expertScore||0;}
     else if(sortBy==='rating'){va=a.rating||0;vb=b.rating||0;}
     else if(sortBy==='recent'){va=a.updatedAt||0;vb=b.updatedAt||0;}
+    else if(sortBy==='fylde'){va=a.fylde||0;vb=b.fylde||0;}
+    else if(sortBy==='friskhet'){va=a.friskhet||0;vb=b.friskhet||0;}
+    else if(sortBy==='sodme'){va=a.sodme||0;vb=b.sodme||0;}
+    else if(sortBy==='garvestoff'){va=a.garvestoff||0;vb=b.garvestoff||0;}
     else{va=a.id;vb=b.id;}
     if(va<vb)return sortAsc?-1:1;
     if(va>vb)return sortAsc?1:-1;
