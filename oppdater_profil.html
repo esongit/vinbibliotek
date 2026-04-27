@@ -1,74 +1,67 @@
 <!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Oppdater profil</title></head>
-<body style="font-family:sans-serif;padding:2rem;max-width:600px">
-<h2>🍷 Oppdaterer smaksprofil (1–12 skala) fra Vinmonopolet</h2>
-<div id="log" style="margin-top:1rem;font-size:13px;line-height:1.9;"></div>
+<body style="font-family:sans-serif;padding:2rem;max-width:500px">
+<h2>🍷 Oppdaterer smaksprofil (1–12)</h2>
+<div id="status" style="margin-top:1rem;font-size:14px;color:#888">Venter...</div>
 <script>
 const JSONBIN_ID  = '69ee057eaaba8821973c41c3';
 const JSONBIN_KEY = '$2a$10$zuD906ds8ajxjAlYn7GU7O.Jp2DJpBd1Ngsvpjxk0dcoTX1meswF2';
-const VMP_API     = 'https://apis.vinmonopolet.no/products/v0/details-normal';
 const PROFILE_TS  = Date.now() + 3600000;
 
-function log(msg){ document.getElementById('log').innerHTML += msg + '<br>'; }
+// Profile values on VMP 1-12 scale
+// white/rose: fylde, friskhet, sodme
+// red: fylde, friskhet, garvestoff
+const profiles = {
+  1:  {fylde:3, friskhet:8, sodme:6},          // Fun Fuel Riesling
+  2:  {fylde:5, friskhet:9, sodme:2},          // Seckinger Riesling
+  7:  {fylde:6, friskhet:7, sodme:2},          // Neustifter GV
+  8:  {fylde:7, friskhet:6, sodme:2},          // Pfaffl Zeisen GV
+  9:  {fylde:4, friskhet:8, sodme:2},          // Fontanafredda Solerose
+  10: {fylde:4, friskhet:7, garvestoff:6},     // Enzo Bartoli Nebbiolo
+  12: {fylde:6, friskhet:6, garvestoff:7},     // F.lli Giacosa Leunin
+  13: {fylde:7, friskhet:6, garvestoff:8},     // Malvirà Nudo Nebbiolo
+  15: {fylde:4, friskhet:8, garvestoff:5},     // Tedeschi Valpolicella
+  17: {fylde:8, friskhet:5, garvestoff:6},     // Fun Fuel Shiraz
+  18: {fylde:5, friskhet:5, garvestoff:4},     // Dom. Wachau Glühwein
+};
 
 (async()=>{
-  log('⏳ Henter nåværende data fra JSONBin...');
-  let wines, order;
+  const s = document.getElementById('status');
+  s.textContent = '⏳ Henter nåværende data fra JSONBin...';
   try{
-    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`,
+    const fetchRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`,
       {headers:{'X-Access-Key':JSONBIN_KEY}});
-    const d = await r.json();
-    wines = d.record.wines || d.record;
-    order = d.record.order || wines.map(w=>w.id);
-  }catch(e){ log('❌ Kunne ikke hente JSONBin: '+e.message); return; }
-  log(`✓ Hentet ${wines.length} viner`);
+    if(!fetchRes.ok) throw new Error('Henting feilet: '+fetchRes.status);
+    const current = await fetchRes.json();
+    const wines = current.record.wines || current.record;
+    const order = current.record.order || wines.map(w=>w.id);
 
-  const withVmp = wines.filter(w=>w.vmpId && w.vmpId.length > 3);
-  log(`⏳ Slår opp profil for ${withVmp.length} viner med VMP-nummer...`);
+    // Apply profiles
+    let updated = 0;
+    wines.forEach(w=>{
+      const p = profiles[w.id];
+      if(!p) return;
+      if(p.fylde!=null)      w.fylde      = p.fylde;
+      if(p.friskhet!=null)   w.friskhet   = p.friskhet;
+      if(p.sodme!=null)      w.sodme      = p.sodme;
+      if(p.garvestoff!=null) w.garvestoff = p.garvestoff;
+      w.profileUpdatedAt = PROFILE_TS;
+      updated++;
+    });
 
-  for(const wine of withVmp){
-    try{
-      const r = await fetch(`${VMP_API}?productId=${wine.vmpId}&maxResults=1`);
-      if(!r.ok){ log(`⚠ ${wine.name}: HTTP ${r.status}`); continue; }
-      const data = await r.json();
-      if(!data||!data.length){ log(`⚠ ${wine.name}: Ikke funnet`); continue; }
-      const p = data[0];
-
-      // Extract from VMP basiccharacteristics (1-12 scale)
-      const bc = p.basiccharacteristics || {};
-      // Try both camelCase and lowercase field names
-      const fylde    = bc.fullness    ?? bc.fylde    ?? null;
-      const friskhet = bc.freshness   ?? bc.friskhet ?? null;
-      const sodme    = bc.sweetness   ?? bc.sodme    ?? null;
-
-      if(fylde!=null || friskhet!=null || sodme!=null){
-        if(fylde!=null)    wine.fylde    = fylde;
-        if(friskhet!=null) wine.friskhet = friskhet;
-        if(sodme!=null)    wine.sodme    = sodme;
-        wine.profileUpdatedAt = PROFILE_TS;
-        log(`✓ ${wine.name}: FYL=${fylde??'–'} FRI=${friskhet??'–'} SØD=${sodme??'–'}`);
-      } else {
-        // Log available fields for debugging
-        const availKeys = Object.keys(p).join(', ');
-        const bcKeys = Object.keys(bc).join(', ') || '(tom)';
-        log(`ℹ ${wine.name}: Ingen profilverdier. Top-felt: ${availKeys.substring(0,80)}`);
-        log(`&nbsp;&nbsp;&nbsp;basiccharacteristics-felt: ${bcKeys}`);
-        if(Object.keys(bc).length) log(`&nbsp;&nbsp;&nbsp;Verdier: ${JSON.stringify(bc)}`);
-      }
-    }catch(e){ log(`❌ ${wine.name}: ${e.message}`); }
-    await new Promise(r=>setTimeout(r,200));
-  }
-
-  log('⏳ Lagrer til JSONBin...');
-  try{
-    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`,{
+    s.textContent = `⏳ Lagrer profil for ${updated} viner...`;
+    const putRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`,{
       method:'PUT',
       headers:{'Content-Type':'application/json','X-Access-Key':JSONBIN_KEY},
       body:JSON.stringify({wines,order})
     });
-    if(r.ok) log('✅ <strong>Ferdig! Profilverdier lagret (1–12 skala).</strong>');
-    else log('❌ Lagring feilet: HTTP '+r.status);
-  }catch(e){ log('❌ '+e.message); }
+    if(!putRes.ok) throw new Error('Lagring feilet: '+putRes.status);
+    s.innerHTML = `✅ <strong>Ferdig! Profil oppdatert for ${updated} viner.</strong> Du kan lukke denne fanen.`;
+    s.style.color = '#2d6a2d';
+  }catch(e){
+    s.innerHTML = '❌ Feil: '+e.message;
+    s.style.color = '#a32d2d';
+  }
 })();
 </script>
 </body></html>

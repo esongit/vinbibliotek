@@ -486,18 +486,32 @@ function profileCircleSVG(val, color, sz=18){
 }
 function profileCirclesHTML(w, small=true){
   const sz=small?14:22;
-  const profiles=[
-    {key:'fylde',   label:'FYL', labelFull:'Fylde',   color:'#8B5CF6'},
-    {key:'friskhet',label:'FRI', labelFull:'Friskhet',color:'#06B6D4'},
-    {key:'sodme',   label:'SØD', labelFull:'Sødme',   color:'#F59E0B'},
-  ];
+  // Profile slots depend on wine type:
+  // white/rose: FYL, FRI, SØD
+  // red:        FYL, FRI, GAR (garvestoff)
+  // other:      FYL, FRI
+  let profiles;
+  if(w.type==='red'){
+    profiles=[
+      {key:'fylde',      label:'FYL', labelFull:'Fylde',       color:'#8B5CF6'},
+      {key:'friskhet',   label:'FRI', labelFull:'Friskhet',    color:'#06B6D4'},
+      {key:'garvestoff', label:'GAR', labelFull:'Garvestoff',  color:'#EF4444'},
+    ];
+  } else if(w.type==='white'||w.type==='rose'){
+    profiles=[
+      {key:'fylde',    label:'FYL', labelFull:'Fylde',    color:'#8B5CF6'},
+      {key:'friskhet', label:'FRI', labelFull:'Friskhet', color:'#06B6D4'},
+      {key:'sodme',    label:'SØD', labelFull:'Sødme',    color:'#F59E0B'},
+    ];
+  } else {
+    return ''; // Andre: ingen profilsirkler
+  }
   const anyVal=profiles.some(p=>w[p.key]!=null);
   if(!anyVal) return '';
   const circles=profiles.map(p=>{
     const val=w[p.key];
     const isEmpty=val==null;
-    // small: show circle + short label; full: show circle + full label + value/12
-    const labelStr = small
+    const labelStr=small
       ? p.label
       : `${p.labelFull} <span style="color:#bbb;font-size:10px;">${val!=null?val+'/12':''}</span>`;
     return `<div class="profile-circle-wrap${isEmpty?' empty':''}">
