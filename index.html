@@ -545,27 +545,85 @@ function openModal(id){
   editRating=w.rating||0;renderModal(w);
 }
 
-function renderModal(w){
+function renderModal(w, editMode=false){
   const st=effectiveStatus(w);
-  const warn=st==='boring'?`<div class="dismiss-warning"><span>⚠️</span><span>Merket som boring.</span></div>`:'';
-  const priceStr=w.price?Math.round(w.price)+' kr'+(w.priceDate?` <span style="font-size:10px;color:#bbb;">(${w.priceDate})</span>`:''):'—';
-  const kvalRow=w.expertScore?`<span class="dl">Kvalitet:</span><span class="dv" style="display:flex;align-items:center;gap:5px;">${diceSVG(w.expertScore,20)}<span style="font-size:10px;color:#999;font-weight:600;">${scoreTag(w)}</span></span>`:'';
-  const vmpBtn=w.vmpId?`<a href="https://www.vinmonopolet.no/p/${w.vmpId}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#1a56b0;text-decoration:underline;">Se på Vinmonopolet ↗</a>`:'';
-
-  // tasted = has note or rating
   const tasted=hasTasted(w);
-  // boring button only if not tasted
   const boringBtn=!tasted&&st!=='boring'?`<button class="action-btn amber" onclick="setStatus(${w.id},'boring')">Boring</button>`:'';
   const unboringBtn=st==='boring'?`<button class="action-btn" onclick="setStatus(${w.id},'pending')">Fjern boring</button>`:'';
-  // pending button only if not tasted and currently 'all'
   const pendingBtn=!tasted&&st==='all'?`<button class="action-btn" onclick="setStatus(${w.id},'pending')">Ikke smakt</button>`:'';
-
-  // img buttons row
   const imgBtns=`<div class="img-btn-row">
-    <button class="img-btn" onclick="triggerImgUpload(${w.id})" title="Last opp bilde fra fil">📂 Endre foto</button>
-    <button class="img-btn" onclick="findPhoto(${w.id})" title="Søk etter bilde">🔍 Finn foto</button>
+    <button class="img-btn" onclick="triggerImgUpload(${w.id})">📂 Endre foto</button>
+    <button class="img-btn" onclick="findPhoto(${w.id})">🔍 Finn foto</button>
   </div>
   <input type="file" id="img-upload-${w.id}" accept="image/*" style="display:none;" onchange="handleImgUpload(event,${w.id})"/>`;
+
+  // ── VIEW MODE ──
+  const typeOpts=['red','white','rose','other'].map(t=>`<option value="${t}"${w.type===t?' selected':''}>${typeLabel(t)}</option>`).join('');
+  const scoreOpts=['','1','2','3','4','5','6'].map(v=>`<option value="${v}"${String(w.expertScore||'')==v?' selected':''}>${v||'—'}</option>`).join('');
+  const srcOpts=[['GV','GV — Generell vurdering'],['IT','IT — Ingvild Tennfjord']].map(([v,l])=>`<option value="${v}"${w.expertSource===v?' selected':''}>${l}</option>`).join('');
+  const priceVal=w.price?Math.round(w.price):'';
+  const priceDate=w.priceDate?` <span style="font-size:10px;color:#bbb;">(${w.priceDate})</span>`:'';
+
+  const IS = 'font-size:12px;padding:5px 7px;border:1px solid #ddd;border-radius:6px;background:#fff;font-family:inherit;outline:none;width:100%;';
+  const IL = 'font-size:11px;color:#888;margin-bottom:2px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;';
+
+  // build body content — same layout for view and edit, fields swap between text and input
+  const bodyContent = editMode ? `
+    <div id="edit-dirty-banner" style="display:none;background:#FFF3DC;border:1px solid #f0d080;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#664400;font-weight:500;">⚠ Ulagrede endringer</div>
+    <div style="${IL}">Navn</div>
+    <input id="ed-name" value="${w.name}" style="${IS}margin-bottom:8px;font-size:14px;font-weight:600;"/>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div style="flex:1;"><div style="${IL}">Drue</div><input id="ed-grape" value="${w.grape}" style="${IS}"/></div>
+      <div style="flex:1;"><div style="${IL}">Region</div><input id="ed-region" value="${w.region}" style="${IS}"/></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div style="flex:1;"><div style="${IL}">Type</div><select id="ed-type" style="${IS}">${typeOpts}</select></div>
+      <div style="flex:1;"><div style="${IL}">Pris (kr)</div><input id="ed-price" type="number" value="${priceVal}" style="${IS}"/></div>
+    </div>
+    <div style="${IL}">Smak</div>
+    <input id="ed-taste" value="${w.taste}" style="${IS}margin-bottom:8px;"/>
+    <div style="${IL}">Passer til</div>
+    <input id="ed-food" value="${w.food}" style="${IS}margin-bottom:8px;"/>
+    <div style="${IL}">Beskrivelse</div>
+    <textarea id="ed-desc" rows="3" style="${IS}margin-bottom:8px;resize:vertical;">${w.desc}</textarea>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px;">
+      <div style="flex:1;"><div style="${IL}">Terningkast</div><select id="ed-score" style="${IS}">${scoreOpts}</select></div>
+      <div style="flex:1;"><div style="${IL}">Kilde</div><select id="ed-src" style="${IS}">${srcOpts}</select></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div style="flex:1;"><div style="${IL}">VMP-nr</div><input id="ed-vmpid" value="${w.vmpId||''}" style="${IS}"/></div>
+      <div style="flex:1;"><div style="${IL}">Vivino-hash</div><input id="ed-vivino" value="${w.vivinoHash||''}" style="${IS}"/></div>
+    </div>
+    ${w.localImg?`<div style="font-size:11px;color:#888;margin-bottom:8px;">📷 Egenlastet bilde. <button onclick="removeLocalImg(${w.id})" style="font-size:11px;color:#a32d2d;background:none;border:none;cursor:pointer;padding:0;">Fjern</button></div>`:''}
+    <div style="${IL}margin-top:4px;">Min vurdering (1–6 stjerner)</div>
+    <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
+    <div style="${IL}">Smaksnotat</div>
+    <textarea class="tasting-note" id="modal-note" rows="3" placeholder="Skriv egne notater her..." style="${IS}resize:vertical;">${w.note||''}</textarea>
+    <div id="note-saved" style="min-height:14px;font-size:10px;color:#2d6a2d;margin-top:2px;"></div>
+  ` : `
+    ${st==='boring'?`<div class="dismiss-warning"><span>⚠️</span><span>Merket som boring.</span></div>`:''}
+    <div class="modal-title">${w.name}</div>
+    <div class="modal-meta">${w.grape} · ${w.region} · ${typeLabel(w.type)}</div>
+    <div class="detail-grid">
+      <span class="dl">Pris:</span><span class="dv">${w.price?Math.round(w.price)+' kr'+priceDate:'—'}</span>
+      <span class="dl">Smak:</span><span class="dv">${w.taste}</span>
+      <span class="dl">Mat:</span><span class="dv">${w.food}</span>
+      ${w.expertScore?`<span class="dl">Kvalitet:</span><span class="dv" style="display:flex;align-items:center;gap:5px;">${diceSVG(w.expertScore,20)}<span style="font-size:10px;color:#999;font-weight:600;">${scoreTag(w)}</span></span>`:''}
+    </div>
+    ${w.vmpId?`<a href="https://www.vinmonopolet.no/p/${w.vmpId}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#1a56b0;text-decoration:underline;">Se på Vinmonopolet ↗</a>`:''}
+    <div class="desc-text">${w.desc}</div>
+    ${w.note?`<div style="margin-top:8px;font-size:12px;color:#666;background:#f9f8f5;border-radius:7px;padding:8px 10px;border:1px solid #e5e5e5;"><span style="font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:3px;">Mitt notat</span>${w.note}</div>`:''}
+    ${w.rating?`<div style="margin-top:6px;display:flex;gap:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:18px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:''}
+  `;
+
+  const actionBtns = editMode ? `
+    <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${w.id})">Lagre</button>
+    <button class="action-btn" onclick="cancelEdit(${w.id})">Avbryt</button>
+  ` : `
+    ${boringBtn}${unboringBtn}${pendingBtn}
+    <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
+    <button class="action-btn" style="margin-left:auto;" onclick="closeModal()">Lukk</button>
+  `;
 
   document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -574,29 +632,29 @@ function renderModal(w){
         <div class="modal-type-badge">${typeIcon(w.type,22)}</div>
         ${imgBtns}
       </div>
-      <div class="modal-body">
-        ${warn}
-        <div class="modal-title">${w.name}</div>
-        <div class="modal-meta">${w.grape} · ${w.region} · ${typeLabel(w.type)}</div>
-        <div class="detail-grid">
-          <span class="dl">Pris:</span><span class="dv">${priceStr}</span>
-          <span class="dl">Smak:</span><span class="dv">${w.taste}</span>
-          <span class="dl">Mat:</span><span class="dv">${w.food}</span>
-          ${kvalRow}
-        </div>
-        ${vmpBtn}
-        <div class="desc-text">${w.desc}</div>
-        ${w.note?`<div style="margin-top:8px;font-size:12px;color:#666;background:#f9f8f5;border-radius:7px;padding:8px 10px;border:1px solid #e5e5e5;"><span style="font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:3px;">Mitt notat</span>${w.note}</div>`:''}
-        ${w.rating?`<div style="margin-top:6px;display:flex;gap:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:18px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:''}
+      <div class="modal-body" id="modal-body-inner">
+        ${bodyContent}
       </div>
-      <div class="modal-actions">
-        ${boringBtn}${unboringBtn}${pendingBtn}
-        <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
-        <button class="action-btn" style="margin-left:auto;" onclick="closeModal()">Lukk</button>
+      <div class="modal-actions" id="modal-actions-inner">
+        ${actionBtns}
       </div>
     </div>
   </div>`;
+
   isDirty=false;
+  if(editMode){
+    originalNote=w.note||'';
+    originalRating=w.rating||0;
+    editRating=w.rating||0;
+    renderStars();
+    setTimeout(()=>{
+      document.querySelectorAll('#modal-body-inner input,#modal-body-inner select,#modal-body-inner textarea')
+        .forEach(el=>{
+          el.addEventListener('input',()=>markDirty());
+          el.addEventListener('change',()=>markDirty());
+        });
+    },0);
+  }
 }
 
 /* ── PHOTO FUNCTIONS ── */
@@ -634,55 +692,12 @@ function findPhoto(id){
 /* ── EDIT MODE ── */
 function openEditMode(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
-  const body=document.querySelector('.modal-body');if(!body)return;
-  const existing=document.getElementById('edit-section');if(existing){existing.remove();return;}
-  const typeOpts=['red','white','rose','other'].map(t=>`<option value="${t}"${w.type===t?' selected':''}>${typeLabel(t)}</option>`).join('');
-  const scoreOpts=['','1','2','3','4','5','6'].map(v=>`<option value="${v}"${String(w.expertScore||'')==v?' selected':''}>${v||'—'}</option>`).join('');
-  const srcOpts=[['GV','GV — Generell vurdering'],['IT','IT — Ingvild Tennfjord']].map(([v,l])=>`<option value="${v}"${w.expertSource===v?' selected':''}>${l}</option>`).join('');
-  const sec=document.createElement('div');sec.id='edit-section';sec.className='edit-form-section';
-  sec.innerHTML=`
-    <div class="tasting-label" style="margin-top:0;">Rediger</div>
-    <div class="edit-row"><input id="ed-name" value="${w.name}" placeholder="Navn"/></div>
-    <div class="edit-row"><input id="ed-grape" value="${w.grape}" placeholder="Drue"/><input id="ed-region" value="${w.region}" placeholder="Region"/></div>
-    <div class="edit-row"><select id="ed-type">${typeOpts}</select><input id="ed-price" type="number" value="${w.price||''}" placeholder="Pris (kr)"/></div>
-    <div class="edit-row"><input id="ed-taste" value="${w.taste}" placeholder="Smak"/></div>
-    <div class="edit-row"><input id="ed-food" value="${w.food}" placeholder="Passer til"/></div>
-    <div class="edit-row"><textarea id="ed-desc" rows="2" placeholder="Beskrivelse">${w.desc}</textarea></div>
-    <div class="edit-row" style="align-items:center;">
-      <label style="font-size:11px;color:#888;">Terningkast:</label>
-      <select id="ed-score">${scoreOpts}</select>
-      <select id="ed-src">${srcOpts}</select>
-    </div>
-    <div class="edit-row"><input id="ed-vmpid" value="${w.vmpId||''}" placeholder="VMP-nr (bilde)"/><input id="ed-vivino" value="${w.vivinoHash||''}" placeholder="Vivino-hash (bilde)"/></div>
-    ${w.localImg?`<div style="font-size:11px;color:#888;margin-bottom:6px;">📷 Egenlastet bilde er aktivt. <button onclick="removeLocalImg(${id})" style="font-size:11px;color:#a32d2d;background:none;border:none;cursor:pointer;padding:0;">Fjern</button></div>`:''}
-    <div class="tasting-label" style="margin-top:8px;">Min vurdering (1–6 stjerner)</div>
-    <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
-    <div class="tasting-label">Smaksnotat</div>
-    <textarea class="tasting-note" id="modal-note" placeholder="Skriv egne notater her..." style="margin-bottom:4px;">${w.note||''}</textarea>
-    <div id="note-saved" style="min-height:14px;"></div>
-    <div style="display:flex;gap:7px;margin-top:4px;">
-      <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${id})">Lagre</button>
-      <button class="action-btn" onclick="cancelEdit()">Avbryt</button>
-    </div>`;
-  body.appendChild(sec);
-  // wire dirty + render stars + capture originals
-  isDirty=false;
-  originalNote=w.note||'';
-  originalRating=w.rating||0;
-  editRating=w.rating||0;
-  renderStars();
-  setTimeout(()=>{
-    const ta=document.getElementById('modal-note');
-    if(ta) ta.addEventListener('input',()=>markDirty());
-    sec.querySelectorAll('input,select,textarea').forEach(el=>{
-      el.addEventListener('input',()=>markDirty());
-      el.addEventListener('change',()=>markDirty());
-    });
-  },0);
+  renderModal(w,true);
 }
-function cancelEdit(){
+function cancelEdit(id){
   isDirty=false;
-  const sec=document.getElementById('edit-section');if(sec)sec.remove();
+  const w=wines.find(x=>x.id===id);if(!w)return;
+  renderModal(w,false);
 }
 async function removeLocalImg(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
@@ -690,13 +705,18 @@ async function removeLocalImg(id){
 }
 async function saveEdit(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
+  // Show "Lagrer..." feedback
+  const btn=document.getElementById('edit-save-btn');
+  if(btn){btn.textContent='Lagrer...';btn.className='action-btn';btn.disabled=true;}
   const g=id=>document.getElementById(id)?.value.trim();
   const score=g('ed-score');
+  const oldPrice=w.price;
   w.name=g('ed-name')||w.name;
   w.grape=g('ed-grape')||w.grape;
   w.region=g('ed-region')||w.region;
   w.type=g('ed-type')||w.type;
-  w.price=parseFloat(g('ed-price'))||w.price;
+  const newPrice=parseFloat(g('ed-price'));
+  if(newPrice) w.price=newPrice;
   w.taste=g('ed-taste')||w.taste;
   w.food=g('ed-food')||w.food;
   w.desc=g('ed-desc')||w.desc;
@@ -707,13 +727,14 @@ async function saveEdit(id){
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);w.vivinoHash=m?m[1]:vivRaw;}else w.vivinoHash=null;
   w.note=document.getElementById('modal-note')?.value||w.note;
   w.rating=editRating;
-  // if price was manually edited, update priceUpdatedAt so this wins over scripts
-  const newPrice=parseFloat(g('ed-price'));
-  if(newPrice&&newPrice!==w.price) w.priceUpdatedAt=Date.now();
+  // if price was manually edited, update priceUpdatedAt
+  if(newPrice&&newPrice!==oldPrice) w.priceUpdatedAt=Date.now();
   // promote status if now tasted
   if(hasTasted(w)&&w.status==='pending') w.status='all';
   isDirty=false;
-  await saveWine(w);renderModal(w);
+  await saveWine(w);
+  // auto-close modal after save
+  doCloseModal();
 }
 
 /* ── STARS ── */
@@ -727,11 +748,11 @@ function renderStars(){
 /* ── DIRTY DETECTION ── */
 function markDirty(){
   const note=document.getElementById('modal-note')?.value||'';
-  const dirty=(note!==originalNote)||(editRating!==originalRating)||
-    document.getElementById('ed-name')!==null; // any edit field present = dirty
-  isDirty=dirty;
+  const nameEl=document.getElementById('ed-name');
+  if(!nameEl) return; // not in edit mode
+  isDirty=true;
   const btn=document.getElementById('edit-save-btn');
-  if(btn) btn.className='action-btn green'+(dirty?' dirty':'');
+  if(btn&&!btn.disabled) btn.className='action-btn green dirty';
   updateLiveStatus();
 }
 function updateLiveStatus(){
@@ -800,11 +821,10 @@ function confirmClose(callback){
 }
 async function confirmSaveClose(){
   if(selectedId){
-    const editSec=document.getElementById('edit-section');
-    if(editSec) await saveEdit(selectedId);
-    else await saveNote(selectedId);
-  }
-  doCloseModal();
+    const nameEl=document.getElementById('ed-name');
+    if(nameEl) await saveEdit(selectedId); // in edit mode — saveEdit auto-closes
+    else doCloseModal();
+  } else doCloseModal();
 }
 function closeModal(e){
   if(!e||e.target.id==='modal-overlay') confirmClose(doCloseModal);
