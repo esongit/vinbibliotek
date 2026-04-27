@@ -608,7 +608,7 @@ function renderModal(w, editMode=false){
     ${w.localImg?`<div style="font-size:11px;color:#888;margin-bottom:8px;">📷 Egenlastet bilde. <button onclick="removeLocalImg(${w.id})" style="font-size:11px;color:#a32d2d;background:none;border:none;cursor:pointer;padding:0;">Fjern</button></div>`:''}
     <div style="${IL}margin-top:4px;">Min vurdering (1–6 stjerner)</div>
     <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
-    <div style="${IL}">Smaksnotat</div>
+    <div style="${IL}">Mitt notat</div>
     <textarea class="tasting-note" id="modal-note" rows="3" placeholder="Skriv egne notater her..." style="${IS}resize:vertical;">${w.note||''}</textarea>
     <div id="note-saved" style="min-height:14px;font-size:10px;color:#2d6a2d;margin-top:2px;"></div>
   ` : `
@@ -714,37 +714,39 @@ async function removeLocalImg(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
   delete w.localImg;await saveWine(w);renderModal(w);
 }
-async function saveEdit(id){
-  const w=wines.find(x=>x.id===id);if(!w)return;
+async function saveEdit(wineId){
+  const w=wines.find(x=>x.id===wineId);if(!w)return;
   // Show "Lagrer..." feedback
   const btn=document.getElementById('edit-save-btn');
   if(btn){btn.textContent='Lagrer...';btn.className='action-btn';btn.disabled=true;}
-  const g=id=>document.getElementById(id)?.value.trim();
-  const score=g('ed-score');
+  // Use distinct name 'fv' (field value) to avoid shadowing wineId
+  const fv=fieldId=>document.getElementById(fieldId)?.value.trim();
+  const score=fv('ed-score');
   const oldPrice=w.price;
-  w.name=g('ed-name')||w.name;
-  w.grape=g('ed-grape')||w.grape;
-  w.region=g('ed-region')||w.region;
-  w.type=g('ed-type')||w.type;
-  const newPrice=parseFloat(g('ed-price'));
+  // Use ?? '' so empty string is allowed (user can clear a field)
+  w.name     = fv('ed-name')   || w.name;
+  w.grape    = fv('ed-grape')  || w.grape;
+  w.region   = fv('ed-region') || w.region;
+  w.type     = fv('ed-type')   || w.type;
+  const newPrice=parseFloat(fv('ed-price'));
   if(newPrice) w.price=newPrice;
-  w.taste=g('ed-taste')||w.taste;
-  w.food=g('ed-food')||w.food;
-  w.desc=g('ed-desc')||w.desc;
-  w.expertScore=score?parseInt(score):null;
-  w.expertSource=g('ed-src')||'GV';
-  const vmpNew=g('ed-vmpid');w.vmpId=vmpNew||null;
-  const vivRaw=g('ed-vivino');
+  w.taste    = fv('ed-taste')  || w.taste;
+  w.food     = fv('ed-food')   || w.food;
+  w.desc     = fv('ed-desc')   !== undefined ? (document.getElementById('ed-desc')?.value ?? w.desc) : w.desc;
+  w.expertScore  = score ? parseInt(score) : null;
+  w.expertSource = fv('ed-src') || 'GV';
+  const vmpNew=fv('ed-vmpid'); w.vmpId=vmpNew||null;
+  const vivRaw=fv('ed-vivino');
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);w.vivinoHash=m?m[1]:vivRaw;}else w.vivinoHash=null;
-  w.note=document.getElementById('modal-note')?.value||w.note;
-  w.rating=editRating;
+  // note: use raw value (not trimmed) to preserve whitespace in notes
+  w.note   = document.getElementById('modal-note')?.value ?? w.note;
+  w.rating = editRating;
   // if price was manually edited, update priceUpdatedAt
-  if(newPrice&&newPrice!==oldPrice) w.priceUpdatedAt=Date.now();
+  if(newPrice && newPrice!==oldPrice) w.priceUpdatedAt=Date.now();
   // promote status if now tasted
-  if(hasTasted(w)&&w.status==='pending') w.status='all';
+  if(hasTasted(w) && w.status==='pending') w.status='all';
   isDirty=false;
   await saveWine(w);
-  // auto-close modal after save
   doCloseModal();
 }
 
