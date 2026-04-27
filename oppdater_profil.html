@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Oppdater profil</title></head>
+<body style="font-family:sans-serif;padding:2rem;max-width:600px">
+<h2>🍷 Oppdaterer smaksprofil (1–12 skala) fra Vinmonopolet</h2>
+<div id="log" style="margin-top:1rem;font-size:13px;line-height:1.9;"></div>
+<script>
+const JSONBIN_ID  = '69ee057eaaba8821973c41c3';
+const JSONBIN_KEY = '$2a$10$zuD906ds8ajxjAlYn7GU7O.Jp2DJpBd1Ngsvpjxk0dcoTX1meswF2';
+const VMP_API     = 'https://apis.vinmonopolet.no/products/v0/details-normal';
+const PROFILE_TS  = Date.now() + 3600000;
+
+function log(msg){ document.getElementById('log').innerHTML += msg + '<br>'; }
+
+(async()=>{
+  log('⏳ Henter nåværende data fra JSONBin...');
+  let wines, order;
+  try{
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`,
+      {headers:{'X-Access-Key':JSONBIN_KEY}});
+    const d = await r.json();
+    wines = d.record.wines || d.record;
+    order = d.record.order || wines.map(w=>w.id);
+  }catch(e){ log('❌ Kunne ikke hente JSONBin: '+e.message); return; }
+  log(`✓ Hentet ${wines.length} viner`);
+
+  const withVmp = wines.filter(w=>w.vmpId && w.vmpId.length > 3);
+  log(`⏳ Slår opp profil for ${withVmp.length} viner med VMP-nummer...`);
+
+  for(const wine of withVmp){
+    try{
+      const r = await fetch(`${VMP_API}?productId=${wine.vmpId}&maxResults=1`);
+      if(!r.ok){ log(`⚠ ${wine.name}: HTTP ${r.status}`); continue; }
+      const data = await r.json();
+      if(!data||!data.length){ log(`⚠ ${wine.name}: Ikke funnet`); continue; }
+      const p = data[0];
+
+      // Extract from VMP basiccharacteristics (1-12 scale)
+      const bc = p.basiccharacteristics || {};
+      // Try both camelCase and lowercase field names
+      const fylde    = bc.fullness    ?? bc.fylde    ?? null;
+      const friskhet = bc.freshness   ?? bc.friskhet ?? null;
+      const sodme    = bc.sweetness   ?? bc.sodme    ?? null;
+
+      if(fylde!=null || friskhet!=null || sodme!=null){
+        if(fylde!=null)    wine.fylde    = fylde;
+        if(friskhet!=null) wine.friskhet = friskhet;
+        if(sodme!=null)    wine.sodme    = sodme;
+        wine.profileUpdatedAt = PROFILE_TS;
+        log(`✓ ${wine.name}: FYL=${fylde??'–'} FRI=${friskhet??'–'} SØD=${sodme??'–'}`);
+      } else {
+        // Log available fields for debugging
+        const availKeys = Object.keys(p).join(', ');
+        const bcKeys = Object.keys(bc).join(', ') || '(tom)';
+        log(`ℹ ${wine.name}: Ingen profilverdier. Top-felt: ${availKeys.substring(0,80)}`);
+        log(`&nbsp;&nbsp;&nbsp;basiccharacteristics-felt: ${bcKeys}`);
+        if(Object.keys(bc).length) log(`&nbsp;&nbsp;&nbsp;Verdier: ${JSON.stringify(bc)}`);
+      }
+    }catch(e){ log(`❌ ${wine.name}: ${e.message}`); }
+    await new Promise(r=>setTimeout(r,200));
+  }
+
+  log('⏳ Lagrer til JSONBin...');
+  try{
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Access-Key':JSONBIN_KEY},
+      body:JSON.stringify({wines,order})
+    });
+    if(r.ok) log('✅ <strong>Ferdig! Profilverdier lagret (1–12 skala).</strong>');
+    else log('❌ Lagring feilet: HTTP '+r.status);
+  }catch(e){ log('❌ '+e.message); }
+})();
+</script>
+</body></html>
