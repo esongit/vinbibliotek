@@ -89,6 +89,7 @@ textarea.tasting-note{width:100%;font-size:12px;padding:8px 9px;border-radius:7p
 .action-btn.amber{background:#FFF3DC;color:#996600;border-color:#f0d080;}
 .dismiss-warning{background:#FDECEA;border:1px solid #f7c1c1;border-radius:7px;padding:8px 10px;font-size:11px;color:#a32d2d;margin-bottom:8px;display:flex;gap:7px;}
 .note-saved{font-size:10px;color:#2d6a2d;margin-top:3px;}
+.action-btn.dirty{background:#DFF0D8!important;color:#2d6a2d!important;border-color:#b2d9a8!important;font-weight:600;}
 .edit-form-section{border-top:1px solid #f0f0f0;padding-top:10px;margin-top:6px;}
 .edit-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:7px;}
 .edit-row input,.edit-row select,.edit-row textarea{flex:1;min-width:100px;font-size:12px;padding:6px 9px;border:1px solid #ddd;border-radius:7px;font-family:inherit;outline:none;background:#fff;}
@@ -205,6 +206,7 @@ let selectedId=null;
 let editRating=0;
 let isSyncing=false;
 let dragSrcId=null;
+let isDirty=false, originalNote='', originalRating=0;
 
 /* ── SETUP ── */
 function showSetupScreen(){document.getElementById('app-root').style.display='none';document.getElementById('setup-screen').style.display='flex';}
@@ -576,12 +578,21 @@ function renderModal(w){
       <div class="modal-actions">
         ${boringBtn}${unboringBtn}${pendingBtn}
         <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
-        <button class="action-btn" onclick="saveNote(${w.id})">Lagre notat</button>
+        <button class="action-btn" id="save-note-btn" onclick="saveNote(${w.id})">Lagre notat</button>
         <button class="action-btn" style="margin-left:auto;" onclick="closeModal()">Lukk</button>
       </div>
     </div>
   </div>`;
+  // capture originals for dirty detection
+  isDirty=false;
+  originalNote=w.note||'';
+  originalRating=w.rating||0;
   renderStars();
+  // wire up dirty detection on textarea
+  setTimeout(()=>{
+    const ta=document.getElementById('modal-note');
+    if(ta) ta.addEventListener('input',()=>markDirty());
+  },0);
 }
 
 /* ── PHOTO FUNCTIONS ── */
@@ -641,10 +652,15 @@ function openEditMode(id){
     <div class="edit-row"><input id="ed-vmpid" value="${w.vmpId||''}" placeholder="VMP-nr (bilde)"/><input id="ed-vivino" value="${w.vivinoHash||''}" placeholder="Vivino-hash (bilde)"/></div>
     ${w.localImg?`<div style="font-size:11px;color:#888;margin-bottom:6px;">📷 Egenlastet bilde er aktivt. <button onclick="removeLocalImg(${id})" style="font-size:11px;color:#a32d2d;background:none;border:none;cursor:pointer;padding:0;">Fjern</button></div>`:''}
     <div style="display:flex;gap:7px;margin-top:4px;">
-      <button class="action-btn green" onclick="saveEdit(${id})">✓ Lagre</button>
+      <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${id})">✓ Lagre</button>
       <button class="action-btn" onclick="document.getElementById('edit-section').remove()">Avbryt</button>
     </div>`;
   body.appendChild(sec);
+  // wire dirty on all edit inputs
+  sec.querySelectorAll('input,select,textarea').forEach(el=>{
+    el.addEventListener('input',()=>{isDirty=true;const b=document.getElementById('edit-save-btn');if(b)b.className='action-btn green dirty';});
+    el.addEventListener('change',()=>{isDirty=true;const b=document.getElementById('edit-save-btn');if(b)b.className='action-btn green dirty';});
+  });
 }
 async function removeLocalImg(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
@@ -669,15 +685,42 @@ async function saveEdit(id){
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);w.vivinoHash=m?m[1]:vivRaw;}else w.vivinoHash=null;
   w.note=document.getElementById('modal-note')?.value||w.note;
   w.rating=editRating;
+  isDirty=false;
   await saveWine(w);renderModal(w);
 }
 
 /* ── STARS ── */
-function setRating(r){editRating=(r===editRating)?0:r;renderStars();}
+function setRating(r){editRating=(r===editRating)?0:r;renderStars();markDirty();}
 function renderStars(){
   let s='';
   for(let i=1;i<=6;i++) s+=`<span class="star6${i<=editRating?' lit':''}" onclick="setRating(${i})" title="${i===editRating?'Klikk for å fjerne':'Sett '+i+' stjerner'}">★</span>`;
   const el=document.getElementById('modal-stars');if(el)el.innerHTML=s;
+}
+
+/* ── DIRTY DETECTION ── */
+function markDirty(){
+  const note=document.getElementById('modal-note')?.value||'';
+  // dirty if note or rating changed from originals
+  const dirty=(note!==originalNote)||(editRating!==originalRating);
+  isDirty=dirty;
+  const btn=document.getElementById('save-note-btn');
+  if(btn) btn.className='action-btn'+(dirty?' dirty':'');
+  // live status update: if tasted now, remove 'ikke smakt' visually
+  updateLiveStatus();
+}
+function updateLiveStatus(){
+  const note=document.getElementById('modal-note')?.value||'';
+  const tasted=!!(editRating||(note&&note.trim()));
+  // update boring/pending buttons visibility live
+  const boringBtn=document.querySelector('.action-btn.amber');
+  const pendingBtn=document.querySelector('[onclick*="pending"]');
+  if(tasted){
+    if(boringBtn) boringBtn.style.display='none';
+    if(pendingBtn&&pendingBtn.textContent.includes('Ikke smakt')) pendingBtn.style.display='none';
+  } else {
+    if(boringBtn) boringBtn.style.display='';
+    if(pendingBtn&&pendingBtn.textContent.includes('Ikke smakt')) pendingBtn.style.display='';
+  }
 }
 
 /* ── SAVE NOTE / STATUS ── */
@@ -686,9 +729,15 @@ async function saveNote(id){
   w.note=document.getElementById('modal-note').value;
   w.rating=editRating;
   // if now tasted and was pending → promote to 'all'
-  if(hasTasted(w)&&w.status==='pending')w.status='all';
+  if(hasTasted(w)&&w.status==='pending') w.status='all';
   await saveWine(w);
+  isDirty=false;
+  originalNote=w.note;
+  originalRating=w.rating;
+  const btn=document.getElementById('save-note-btn');
+  if(btn) btn.className='action-btn';
   document.getElementById('note-saved').innerHTML='<span class="note-saved">✓ Lagret</span>';
+  // re-render to update status badges/buttons
   renderModal(w);
 }
 async function setStatus(id,status){
@@ -699,13 +748,37 @@ async function setStatus(id,status){
 }
 
 /* ── MODAL CLOSE ── */
+function doCloseModal(){
+  document.getElementById('modal-container').innerHTML='';
+  selectedId=null; isDirty=false;
+}
+function confirmClose(callback){
+  if(!isDirty){callback();return;}
+  // show inline confirm inside modal-actions
+  const actions=document.querySelector('.modal-actions');
+  if(!actions){callback();return;}
+  // remove any existing confirm
+  const existing=document.getElementById('close-confirm');
+  if(existing){existing.remove();return;}
+  const div=document.createElement('div');
+  div.id='close-confirm';
+  div.style.cssText='width:100%;display:flex;align-items:center;gap:8px;padding:6px 0 0;flex-wrap:wrap;';
+  div.innerHTML=`<span style="font-size:11px;color:#666;flex:1;">Ulagrede endringer — lagre?</span>
+    <button class="action-btn green" onclick="confirmSaveClose()">Ja, lagre</button>
+    <button class="action-btn red" onclick="doCloseModal()">Nei, forkast</button>`;
+  actions.appendChild(div);
+}
+async function confirmSaveClose(){
+  if(selectedId){await saveNote(selectedId);}
+  doCloseModal();
+}
 function closeModal(e){
-  if(!e||e.target.id==='modal-overlay'){document.getElementById('modal-container').innerHTML='';selectedId=null;}
+  if(!e||e.target.id==='modal-overlay') confirmClose(doCloseModal);
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    if(document.getElementById('lightbox-container').innerHTML)closeLightbox();
-    else if(selectedId!==null){document.getElementById('modal-container').innerHTML='';selectedId=null;}
+    if(document.getElementById('lightbox-container').innerHTML) closeLightbox();
+    else if(selectedId!==null) confirmClose(doCloseModal);
   }
 });
 
