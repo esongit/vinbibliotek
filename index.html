@@ -113,9 +113,9 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
 .search-clear:hover{color:#666;}
 
 /* PROFILE CIRCLES */
-.profile-circles{display:flex;gap:6px;align-items:center;}
-.profile-circle-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.profile-circle-wrap.empty{visibility:hidden;}
+.profile-circles{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.profile-circle-wrap{display:flex;flex-direction:row;align-items:center;gap:3px;}
+.profile-circle-wrap.empty{visibility:hidden;pointer-events:none;}
 .profile-label{font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
 .profile-label-full{font-size:10px;color:#888;text-align:center;}
 
@@ -184,6 +184,12 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
       <button class="toggle-btn" id="tb-har"     onclick="toggleStatus('har')">Har</button>
       <button class="toggle-btn" id="tb-bestill" onclick="toggleStatus('bestill')">Bestill</button>
       <button class="toggle-btn" id="tb-meh"     onclick="toggleStatus('meh')">Meh</button>
+    </div>
+    <div class="toolbar-row">
+      <span class="toolbar-label">Profil</span>
+      <div id="profil-circles-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;min-height:22px;">
+        <span style="font-size:10px;color:#ccc;font-style:italic;">Vises når profil er satt</span>
+      </div>
     </div>
     <div class="toolbar-row">
       <span class="toolbar-label">Sorter</span>
@@ -453,11 +459,12 @@ function openLightbox(uid){
 function closeLightbox(){document.getElementById('lightbox-container').innerHTML='';}
 
 /* ── PROFILE CIRCLES ── */
-function profileCircleSVG(pct, color, sz=18){
-  // Draw a pie/arc circle filled pct% (0-100)
-  if(pct===null||pct===undefined) return '';
+function profileCircleSVG(val, color, sz=18){
+  // val is on 1-12 scale from Vinmonopolet
+  if(val===null||val===undefined) return '';
   const r=sz/2, cx=r, cy=r, radius=r-1.5;
-  if(pct>=100){
+  const pct = (val-1)/11; // convert 1-12 to 0-1
+  if(pct>=1){
     return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">
       <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${color}" stroke="#ddd" stroke-width="1"/>
     </svg>`;
@@ -467,10 +474,10 @@ function profileCircleSVG(pct, color, sz=18){
       <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
     </svg>`;
   }
-  const angle=(pct/100)*Math.PI*2;
+  const angle=pct*Math.PI*2;
   const x=cx+radius*Math.sin(angle);
   const y=cy-radius*Math.cos(angle);
-  const large=pct>50?1:0;
+  const large=pct>0.5?1:0;
   return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">
     <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
     <path d="M${cx},${cy} L${cx},${cy-radius} A${radius},${radius} 0 ${large},1 ${x},${y} Z" fill="${color}"/>
@@ -480,18 +487,22 @@ function profileCircleSVG(pct, color, sz=18){
 function profileCirclesHTML(w, small=true){
   const sz=small?14:22;
   const profiles=[
-    {key:'fylde',   label:'F',  labelFull:'Fylde',   color:'#8B5CF6'},
-    {key:'friskhet',label:'Fr', labelFull:'Friskhet',color:'#06B6D4'},
-    {key:'sodme',   label:'S',  labelFull:'Sødme',   color:'#F59E0B'},
+    {key:'fylde',   label:'FYL', labelFull:'Fylde',   color:'#8B5CF6'},
+    {key:'friskhet',label:'FRI', labelFull:'Friskhet',color:'#06B6D4'},
+    {key:'sodme',   label:'SØD', labelFull:'Sødme',   color:'#F59E0B'},
   ];
   const anyVal=profiles.some(p=>w[p.key]!=null);
   if(!anyVal) return '';
   const circles=profiles.map(p=>{
     const val=w[p.key];
     const isEmpty=val==null;
+    // small: show circle + short label; full: show circle + full label + value/12
+    const labelStr = small
+      ? p.label
+      : `${p.labelFull} <span style="color:#bbb;font-size:10px;">${val!=null?val+'/12':''}</span>`;
     return `<div class="profile-circle-wrap${isEmpty?' empty':''}">
       ${isEmpty?`<div style="width:${sz}px;height:${sz}px;"></div>`:profileCircleSVG(val,p.color,sz)}
-      <span class="${small?'profile-label':'profile-label-full'}">${small?p.label:p.labelFull}</span>
+      <span class="${small?'profile-label':'profile-label-full'}">${labelStr}</span>
     </div>`;
   }).join('');
   return `<div class="profile-circles">${circles}</div>`;
@@ -611,13 +622,14 @@ function cardHTML(w,draggable=false){
     st==='boring'?'<span class="status-badge badge-boring">Boring</span>':'';
   const diceRow=w.expertScore?`<div class="card-dice-row">${diceSVG(w.expertScore,14)}<span style="font-size:9px;color:#999;font-weight:600;">${scoreTag(w)}</span></div>`:'';
   const profRow=profileCirclesHTML(w,true);
+  const profSection=profRow?`<div style="margin-bottom:3px;">${profRow}</div>`:'';
   const userStars=w.rating?`<div style="display:flex;gap:1px;margin-bottom:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:10px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:'';
   const dragAttr=draggable?`draggable="true" data-id="${w.id}"`:'' ;
   const handle=draggable?`<div class="drag-handle">⠿</div>`:'';
   return `<div class="wine-card${st==='boring'?' boring':''}" ${dragAttr} onclick="openModal(${w.id})" style="position:relative;">
     ${handle}
     <div class="card-img-area">${imgAreaHTML(w,155)}<div class="type-icon-badge">${typeIcon(w.type,14)}</div></div>
-    <div class="card-body">${diceRow}${userStars}
+    <div class="card-body">${diceRow}${profSection}${userStars}
       <div class="card-name">${w.name}</div>
       <div class="card-sub">${w.grape} · ${w.region}</div>
       <div class="card-footer">
