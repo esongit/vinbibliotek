@@ -138,7 +138,7 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
     <div style="font-size:11px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">JSONBin Bin ID</div>
     <input id="setup-bin-id" placeholder="f.eks. 69ee057eaaba8821973c41c3" style="width:100%;font-size:13px;padding:9px 11px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-family:monospace;outline:none;"/>
     <div style="font-size:11px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Access Key</div>
-    <input id="setup-access-key" type="password" placeholder="$2a$10$..." style="width:100%;font-size:13px;padding:9px 11px;border:1px solid #ddd;border-radius:8px;margin-bottom:6px;font-family:monospace;outline:none;"/>
+    <input id="setup-access-key" type="password" placeholder="$2a$10$..." autocomplete="current-password" style="width:100%;font-size:13px;padding:9px 11px;border:1px solid #ddd;border-radius:8px;margin-bottom:6px;font-family:monospace;outline:none;"/>
     <div style="font-size:11px;color:#888;margin-bottom:16px;line-height:1.5;">Finn disse på <a href="https://jsonbin.io" target="_blank" style="color:#1a56b0;">jsonbin.io</a> — Bin ID er i URL-en, Access Key under API Keys.</div>
     <div id="setup-error" style="font-size:12px;color:#a32d2d;margin-bottom:10px;min-height:16px;"></div>
     <button id="setup-btn" onclick="saveSetup()" style="width:100%;font-size:14px;font-weight:500;padding:10px;border-radius:8px;border:none;background:#1a1a1a;color:#fff;cursor:pointer;">Lagre og koble til</button>
@@ -1090,7 +1090,11 @@ async function vmpFetch(url){
   const proxyUrl=`${VMP_PROXY}?url=${encodeURIComponent(url)}`;
   const res=await fetch(proxyUrl);
   if(!res.ok) throw new Error('HTTP '+res.status);
-  return res.json();
+  const text=await res.text();
+  if(text.trim().startsWith('<')){
+    throw new Error('Fikk HTML — Worker ikke oppdatert ennå');
+  }
+  return JSON.parse(text);
 }
 
 function vmpTypeToLocal(t){
