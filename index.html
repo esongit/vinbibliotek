@@ -1017,6 +1017,7 @@ function toggleManualForm(){
           oninput="scheduleVmpSearch()" onkeydown="if(event.key==='Escape'){document.getElementById('nw-search').value='';document.getElementById('nw-search-results').innerHTML='';}" />
       </div>
       <div id="nw-search-results" style="margin-top:6px;border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;display:none;"></div>
+      <div id="nw-prof-preview" style="font-size:11px;color:#2d6a2d;margin-top:4px;min-height:14px;"></div>
     </div>
     <div style="border-top:1px solid #f0f0f0;padding-top:10px;">
       <div style="font-size:10px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Detaljer <span id="nw-autofill-badge" style="display:none;background:#DFF0D8;color:#2d6a2d;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;">Autofylt</span></div>
@@ -1050,17 +1051,28 @@ function scheduleVmpSearch(){
   vmpSearchTimer=setTimeout(()=>doVmpSearch(q),400);
 }
 
+async function vmpFetch(url){
+  const proxyUrl=`${VMP_PROXY}?url=${encodeURIComponent(url)}`;
+  const res=await fetch(proxyUrl);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  return res.json();
+}
+
+function vmpTypeToLocal(t){
+  if(!t) return 'red';
+  const tl=t.toLowerCase();
+  if(tl.includes('hvit')||tl.includes('white')) return 'white';
+  if(tl.includes('ros')) return 'rose';
+  return 'red';
+}
+
 async function doVmpSearch(q){
   const box=document.getElementById('nw-search-results');
   if(!box)return;
   box.style.display='block';
   box.innerHTML='<div style="padding:10px;font-size:12px;color:#888;">Søker...</div>';
   try{
-    const vmpUrl=`https://www.vinmonopolet.no/vmpws/v2/vmp/products/search?fields=FULL&pageSize=12&currentPage=0&q=${encodeURIComponent(q)}`;
-    const proxyUrl=`${VMP_PROXY}?url=${encodeURIComponent(vmpUrl)}`;
-    const res=await fetch(proxyUrl);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data=await res.json();
+    const data=await vmpFetch(`https://www.vinmonopolet.no/vmpws/v2/vmp/products/search?fields=FULL&pageSize=12&currentPage=0&q=${encodeURIComponent(q)}`);
     const products=data.productList?.results||data.products||[];
     if(!products.length){box.innerHTML='<div style="padding:10px;font-size:12px;color:#888;">Ingen viner funnet</div>';return;}
     box.innerHTML=products.map(p=>{
@@ -1070,18 +1082,13 @@ async function doVmpSearch(q){
       const country=p.main_country?.name||p.mainCountry?.name||'';
       const grape=(p.grapes||[]).map(g=>g.name).join('/');
       const img=pid?`${VMP_IMG}${pid}-1.jpg`:'';
-      return `<div onclick="fillFromVmp(${JSON.stringify({pid,name,price:p.price?.value,country,grape,
-        taste:(p.content?.characteristics||[]).map(x=>x.name).join(', '),
-        food:(p.content?.isGoodFor||[]).map(x=>x.name).join(', '),
-        desc:p.content?.freshness||'',
-        type:p.main_category?.name||''
-      }).replace(/"/g,'&quot;')})"
+      return `<div onclick="selectVmpProduct('${pid}')"
         style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:background .1s;"
         onmouseover="this.style.background='#f9f8f5'" onmouseout="this.style.background=''">
         ${img?`<img src="${img}" style="width:32px;height:44px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'"/>`:'<div style="width:32px;flex-shrink:0;"></div>'}
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:600;color:#1a1a1a;line-height:1.3;">${name}</div>
-          <div style="font-size:10px;color:#888;">${grape||country||''}</div>
+          <div style="font-size:10px;color:#888;">${grape?grape+' · ':''} ${country}</div>
         </div>
         <div style="font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;">${price}</div>
       </div>`;
@@ -1091,29 +1098,72 @@ async function doVmpSearch(q){
   }
 }
 
-function fillFromVmp(p){
-  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
-  set('nw-name',  p.name);
-  set('nw-grape', p.grape);
-  set('nw-region',p.country);
-  set('nw-vmpid', p.pid);
-  set('nw-taste', p.taste);
-  set('nw-food',  p.food);
-  if(p.price) set('nw-price', Math.round(p.price));
-  // Set type
-  const typeEl=document.getElementById('nw-type');
-  if(typeEl&&p.type){
-    const tl=p.type.toLowerCase();
-    if(tl.includes('hvit')||tl.includes('white')) typeEl.value='white';
-    else if(tl.includes('ros')) typeEl.value='rose';
-    else if(tl.includes('rød')||tl.includes('red')) typeEl.value='red';
-  }
-  // Hide results, show autofill badge, clear search
+async function selectVmpProduct(pid){
   const box=document.getElementById('nw-search-results');
-  if(box) box.style.display='none';
-  const badge=document.getElementById('nw-autofill-badge');
-  if(badge) badge.style.display='inline';
-  document.getElementById('nw-search').value=p.name;
+  if(box) box.innerHTML='<div style="padding:10px;font-size:12px;color:#888;">⏳ Henter detaljer...</div>';
+
+  try{
+    // Fetch full details from details API — has all fields incl. basiccharacteristics
+    const data=await vmpFetch(`https://apis.vinmonopolet.no/products/v0/details-normal?productId=${pid}&maxResults=1`);
+    const p=Array.isArray(data)?data[0]:data;
+    if(!p) throw new Error('Ingen data');
+
+    const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};
+
+    const name   = p.basic?.productShortName||'';
+    const grape  = (p.ingredients?.grapes||[]).map(g=>g.name).join('/');
+    const country= p.origins?.origin?.[0]?.country||'';
+    const district=p.origins?.origin?.[0]?.district||'';
+    const region = [district,country].filter(Boolean).join(', ');
+    const price  = p.price?parseFloat(p.price):null;
+    const taste  = (p.characteristics||[]).map(c=>c.name).join(', ');
+    const food   = (p.food||[]).map(f=>f.name).join(', ');
+    const desc   = p.description?.characteristicDescription||'';
+    const type   = vmpTypeToLocal(p.basic?.mainSubCategoryCode||'');
+
+    // Basic characteristics (1-12 scale)
+    const bc   = p.basiccharacteristics||{};
+    const fylde    = bc.fullness    ?? bc.fylde    ?? null;
+    const friskhet = bc.freshness   ?? bc.friskhet ?? null;
+    const sodme    = bc.sweetness   ?? bc.sodme    ?? null;
+    const garve    = bc.bitterness  ?? bc.garvestoff ?? null;
+
+    set('nw-name',   name);
+    set('nw-grape',  grape);
+    set('nw-region', region);
+    set('nw-vmpid',  pid);
+    set('nw-taste',  taste);
+    set('nw-food',   food);
+    set('nw-desc',   desc);
+    if(price) set('nw-price', Math.round(price));
+
+    const typeEl=document.getElementById('nw-type');
+    if(typeEl) typeEl.value=type;
+
+    // Store profile values for use in addManualWine
+    window._vmpProfile={fylde,friskhet,sodme,garve};
+
+    if(box) box.style.display='none';
+    const badge=document.getElementById('nw-autofill-badge');
+    if(badge) badge.style.display='inline';
+    document.getElementById('nw-search').value=name;
+
+    // Show profile preview if any values found
+    if(fylde||friskhet||sodme||garve){
+      const profPreview=document.getElementById('nw-prof-preview');
+      if(profPreview){
+        const vals=[
+          fylde    ?`FYL ${fylde}/12`:'',
+          friskhet ?`FRI ${friskhet}/12`:'',
+          (sodme&&type!=='red')  ?`SØD ${sodme}/12`:'',
+          (garve&&type==='red')  ?`GAR ${garve}/12`:'',
+        ].filter(Boolean).join(' · ');
+        profPreview.textContent=vals?'Profil: '+vals:'';
+      }
+    }
+  }catch(e){
+    if(box) box.innerHTML=`<div style="padding:10px;font-size:12px;color:#a32d2d;">Feil: ${e.message}</div>`;
+  }
 }
 
 async function addManualWine(){
@@ -1121,7 +1171,31 @@ async function addManualWine(){
   const vivRaw=document.getElementById('nw-vivino').value.trim();let vivinoHash=null;
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);vivinoHash=m?m[1]:vivRaw;}
   const score=document.getElementById('nw-score').value;
-  const newWine={id:nextId(),name,grape:document.getElementById('nw-grape').value.trim()||'—',region:document.getElementById('nw-region').value.trim()||'—',type:document.getElementById('nw-type').value,price:parseFloat(document.getElementById('nw-price').value)||null,priceDate:nowLabel(),vmpId:document.getElementById('nw-vmpid').value.trim()||null,vivinoHash,status:null,taste:document.getElementById('nw-taste').value.trim()||'—',food:document.getElementById('nw-food').value.trim()||'—',expertScore:score?parseInt(score):null,expertSource:document.getElementById('nw-source').value,desc:document.getElementById('nw-desc').value.trim()||'',note:'',rating:0,updatedAt:Date.now()};
+  const prof=window._vmpProfile||{};
+  const newWine={
+    id:nextId(),name,
+    grape:  document.getElementById('nw-grape').value.trim()||'—',
+    region: document.getElementById('nw-region').value.trim()||'—',
+    type:   document.getElementById('nw-type').value,
+    price:  parseFloat(document.getElementById('nw-price').value)||null,
+    priceDate: nowLabel(),
+    priceUpdatedAt: Date.now(),
+    vmpId:  document.getElementById('nw-vmpid').value.trim()||null,
+    vivinoHash,
+    status: null,
+    taste:  document.getElementById('nw-taste').value.trim()||'—',
+    food:   document.getElementById('nw-food').value.trim()||'—',
+    expertScore:  score?parseInt(score):null,
+    expertSource: document.getElementById('nw-source').value,
+    desc:   document.getElementById('nw-desc').value.trim()||'',
+    note:'', rating:0, updatedAt:Date.now(),
+    // Profile values from VMP if available
+    ...(prof.fylde!=null    && {fylde:    prof.fylde}),
+    ...(prof.friskhet!=null && {friskhet: prof.friskhet}),
+    ...(prof.sodme!=null    && {sodme:    prof.sodme}),
+    ...(prof.garve!=null    && {garvestoff: prof.garve}),
+  };
+  window._vmpProfile=null;
   showManual=false;document.getElementById('add-form-container').style.display='none';document.getElementById('add-form-container').innerHTML='';
   await saveWine(newWine);
 }
