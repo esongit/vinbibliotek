@@ -1144,6 +1144,37 @@ async function doVmpSearch(q){
   }
 }
 
+// Convert VMP facet range "7-8" → midpoint integer (e.g. 7)
+function facetToInt(code){
+  if(!code) return null;
+  const parts=code.split('-').map(Number);
+  if(parts.length===2&&!isNaN(parts[0])) return parts[0]; // use lower bound
+  const n=parseInt(code);
+  return isNaN(n)?null:n;
+}
+
+// Parse profile values from facets array for a specific product code
+function profileFromFacets(facets, pid){
+  const result={fylde:null,friskhet:null,sodme:null,garve:null};
+  if(!facets||!pid) return result;
+  // For each profile facet, find which bucket our product falls in
+  // by doing a targeted search — facets tell us distribution across results
+  // When we search by pid alone, facets reflect only that product's values
+  const map={
+    'Fylde':            'fylde',
+    'Friskhet':         'friskhet',
+    'Soedme':           'sodme',
+    'Tannin(Sulfates)': 'garve',
+  };
+  facets.forEach(f=>{
+    const key=map[f.code];
+    if(!key) return;
+    const selected=(f.values||[]).find(v=>v.selected)||(f.values||[])[0];
+    if(selected) result[key]=facetToInt(selected.code);
+  });
+  return result;
+}
+
 async function selectVmpProduct(pid, searchData){
   const box=document.getElementById('nw-search-results');
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};
@@ -1164,56 +1195,58 @@ async function selectVmpProduct(pid, searchData){
   if(searchEl) searchEl.value=searchData.name;
 
   const profPreview=document.getElementById('nw-prof-preview');
-  if(profPreview){ profPreview.textContent='⏳ Henter profildata...'; profPreview.style.color='#888'; }
+  if(profPreview){ profPreview.textContent='⏳ Henter detaljer...'; profPreview.style.color='#888'; }
 
-  // Fetch product page via Worker — parses __NEXT_DATA__ to get basiccharacteristics
   try{
-    const res = await fetch(`${VMP_PROXY}?product=${pid}`);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const p = await res.json();
+    // Search by product code — returns facets specific to this product
+    const data = await vmpFetch(
+      `https://www.vinmonopolet.no/vmpws/v2/vmp/products/search?fields=FULL&pageSize=1&currentPage=0&q=${encodeURIComponent(pid)}`
+    );
 
-    if(p.error){
-      // Worker returned debug info — profile unavailable but not fatal
-      window._vmpProfile={};
-      if(profPreview){ profPreview.textContent=''; }
-      return;
+    // Get product URL for HTML scraping (smak, mat, desc)
+    const prod = (data.products||[])[0];
+    const prodUrl = prod?.url ? `https://www.vinmonopolet.no${prod.url}` : null;
+
+    // Extract profile from facets
+    const prof = profileFromFacets(data.facets||[], pid);
+
+    // Scrape product page for smak, mat, beskrivelse via Worker
+    if(prodUrl){
+      try{
+        const pageRes = await fetch(`${VMP_PROXY}?url=${encodeURIComponent(prodUrl)}`);
+        if(pageRes.ok){
+          const html = await pageRes.text();
+          // Parse smak from "Smak[text]" pattern in HTML
+          const smakMatch = html.match(/SmakSmak[^<]*<\/dt>\s*<dd[^>]*>([^<]+)/i)
+            || html.match(/class="[^"]*smell[^"]*"[^>]*>([^<]+)/i)
+            || html.match(/"Smak"[^:]*:\s*"([^"]+)"/i);
+          // Better: find the Smak value from VMP product page structure
+          // "<dt>Smak</dt><dd>Fast med god fylde..."
+          const smakM = html.match(/<dt[^>]*>Smak<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
+          const luktM = html.match(/<dt[^>]*>Lukt<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
+          const set2=(id,v)=>{const el=document.getElementById(id);if(el&&v&&!el.value)el.value=v.trim();};
+          if(smakM) set2('nw-taste', smakM[1]);
+          if(luktM) set2('nw-desc',  luktM[1]); // use smell as description if no desc
+        }
+      }catch(e){ /* HTML scraping failed silently */ }
     }
 
-    // Extract profile values from __NEXT_DATA__ structure
-    // VMP Next.js stores these in various locations — try all known paths
-    const bc = p.basicCharacteristics || p.basiccharacteristics
-      || p.content?.basicCharacteristics || p.productData?.basicCharacteristics || {};
-
-    const fylde    = bc.fullness    ??bc.fylde    ??bc.body    ??null;
-    const friskhet = bc.freshness   ??bc.friskhet ??bc.acidity ??null;
-    const sodme    = bc.sweetness   ??bc.sodme    ??null;
-    const garve    = bc.bitterness  ??bc.tannins  ??bc.garvestoff??null;
-
-    // Also try to get taste/food/desc if not already filled
-    const set2=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!==''&&!el.value)el.value=v;};
-    const taste = (p.characteristics||p.content?.characteristics||[]).map(x=>x.name||x).join(', ');
-    const food  = (p.food||p.content?.isGoodFor||p.readySteadyDrink||[]).map(x=>x.name||x).join(', ');
-    const desc  = p.description?.characteristicDescription||p.content?.description||'';
-    if(taste) set2('nw-taste', taste);
-    if(food)  set2('nw-food',  food);
-    if(desc)  set2('nw-desc',  desc);
-
-    window._vmpProfile={fylde,friskhet,sodme,garve};
+    window._vmpProfile=prof;
 
     if(profPreview){
       const type=searchData.type||'red';
       const vals=[
-        fylde    !=null?`FYL ${fylde}/12`:'',
-        friskhet !=null?`FRI ${friskhet}/12`:'',
-        sodme    !=null&&type!=='red'?`SØD ${sodme}/12`:'',
-        garve    !=null&&type==='red' ?`GAR ${garve}/12`:'',
+        prof.fylde   !=null?`FYL ${prof.fylde}/12`:'',
+        prof.friskhet!=null?`FRI ${prof.friskhet}/12`:'',
+        prof.sodme   !=null&&type!=='red'?`SØD ${prof.sodme}/12`:'',
+        prof.garve   !=null&&type==='red' ?`GAR ${prof.garve}/12`:'',
       ].filter(Boolean).join(' · ');
       profPreview.textContent=vals?'✓ Profil: '+vals:'(Ingen profilverdier funnet)';
       profPreview.style.color=vals?'#2d6a2d':'#888';
     }
   }catch(e){
     window._vmpProfile={};
-    if(profPreview){ profPreview.textContent='⚠ Profilhenting feilet'; profPreview.style.color='#996600'; }
+    if(profPreview){ profPreview.textContent='⚠ Henting feilet: '+e.message; profPreview.style.color='#996600'; }
   }
 }
 
