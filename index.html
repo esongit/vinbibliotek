@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🍷 Vinbibliotek</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh;}
+.container{max-width:960px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+.lib-header{padding:1rem 0 .75rem;border-bottom:1px solid #ddd;margin-bottom:1rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.lib-title{font-size:24px;font-weight:600;letter-spacing:-.5px;}
+.lib-subtitle{font-size:12px;color:#888;margin-top:2px;}
+.sync-status{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:500;}
+.sync-ok{background:#DFF0D8;color:#2d6a2d;}.sync-wait{background:#FFF3DC;color:#996600;}
+.sync-off{background:#f0f0f0;color:#888;}.sync-err{background:#FDECEA;color:#a32d2d;}
+.toolbar{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px;}
+.toolbar-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+.toolbar-label{font-size:10px;font-weight:600;color:#aaa;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;min-width:48px;}
+.search-input{flex:1;min-width:160px;font-size:13px;padding:6px 11px;border:1px solid #ddd;border-radius:20px;background:#f9f9f9;outline:none;}
+.search-input:focus{border-color:#999;background:#fff;}
+.toggle-btn{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid #ddd;background:#fff;color:#666;cursor:pointer;transition:all .13s;user-select:none;}
+.toggle-btn.active-type-red{background:#c03030;color:#fff;border-color:#902020;}
+.toggle-btn.active-type-white{background:#f5e84a;color:#7a6a00;border-color:#d4c830;}
+.toggle-btn.active-type-rose{background:#f4a0b0;color:#7a1030;border-color:#d07080;}
+.toggle-btn.active-type-other{background:#b0b0b0;color:#fff;border-color:#888;}
+.toggle-btn.active-status{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.sort-select{font-size:11px;padding:4px 9px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#444;cursor:pointer;outline:none;}
+.sort-dir-btn{font-size:14px;padding:3px 9px;border-radius:20px;border:1px solid #ddd;background:#fff;color:#444;cursor:pointer;line-height:1.4;}
+.sort-dir-btn:hover{background:#f0f0f0;}
+.btn-small{font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;white-space:nowrap;}
+.btn-small:hover{background:#f0f0f0;}
+.btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.btn-backup{background:#e8f0fe;color:#1a56b0;border-color:#b8d0f9;}
+.section-label{font-size:10px;font-weight:600;color:#aaa;letter-spacing:.08em;text-transform:uppercase;margin:1.25rem 0 8px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;}
+
+/* DRAG SORT */
+.wine-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,border-color .15s;}
+.wine-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.1);border-color:#bbb;}
+.wine-card.boring{opacity:.4;}
+.wine-card.dragging{opacity:.4;border:2px dashed #aaa;}
+.wine-card.drag-over{border:2px dashed #1a1a1a;}
+.drag-handle{position:absolute;top:6px;right:6px;width:20px;height:20px;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.85);border-radius:4px;cursor:grab;font-size:13px;color:#aaa;z-index:2;}
+.sort-custom .drag-handle{display:flex;}
+.sort-custom .wine-card{cursor:grab;}
+
+.card-img-area{position:relative;width:100%;height:155px;background:#f9f8f5;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.card-img-area img{max-width:100%;max-height:155px;object-fit:contain;padding:7px;}
+.type-icon-badge{position:absolute;bottom:6px;left:6px;width:27px;height:27px;border-radius:50%;background:#fff;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.card-body{padding:8px 10px 10px;}
+.card-name{font-size:11px;font-weight:600;line-height:1.35;margin-bottom:2px;}
+.card-sub{font-size:10px;color:#888;margin-bottom:4px;}
+.card-dice-row{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
+.card-footer{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:4px;}
+.price-val{font-size:12px;font-weight:600;}
+.price-date{font-size:10px;color:#bbb;display:block;}
+.status-badge{font-size:9px;padding:2px 7px;border-radius:9px;font-weight:600;white-space:nowrap;}
+.badge-pending{background:#FFF3DC;color:#996600;}
+.badge-all{background:#DFF0D8;color:#2d6a2d;}
+.badge-boring{background:#FDECEA;color:#a32d2d;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:12px;}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 16px 50px rgba(0,0,0,.22);}
+.modal-img-area{position:relative;width:100%;height:260px;background:#f9f8f5;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px 14px 0 0;}
+.modal-img-area img{max-width:100%;max-height:260px;object-fit:contain;padding:12px;cursor:zoom-in;transition:transform .15s;}
+.modal-type-badge{position:absolute;bottom:9px;left:9px;width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;}
+.img-btn-row{position:absolute;bottom:9px;right:9px;display:flex;gap:6px;}
+.img-btn{font-size:11px;padding:4px 9px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:rgba(255,255,255,.9);cursor:pointer;white-space:nowrap;}
+.img-btn:hover{background:#fff;}
+.modal-body{padding:1rem 1.1rem;}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:2px;line-height:1.3;}
+.modal-meta{font-size:11px;color:#888;margin-bottom:12px;}
+.detail-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:12px;margin-bottom:10px;align-items:center;}
+.dl{color:#888;}.dv{color:#1a1a1a;}
+.desc-text{font-size:12px;color:#666;line-height:1.6;margin:8px 0;border-top:1px solid #f0f0f0;padding-top:8px;}
+.tasting-label{font-size:10px;color:#888;margin-bottom:3px;margin-top:8px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;}
+textarea.tasting-note{width:100%;font-size:12px;padding:8px 9px;border-radius:7px;border:1px solid #ddd;color:#1a1a1a;resize:vertical;min-height:55px;font-family:inherit;outline:none;}
+.stars6-edit{display:flex;gap:4px;margin:5px 0 10px;}
+.star6{font-size:21px;cursor:pointer;color:#ddd;line-height:1;transition:color .1s;}
+.star6.lit{color:#f0a500;}.star6:hover{color:#f0a500;}
+.modal-actions{display:flex;gap:7px;flex-wrap:wrap;padding:0 1.1rem 1.1rem;}
+.action-btn{font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-family:inherit;}
+.action-btn:hover{background:#f5f5f5;}
+.action-btn.green{background:#DFF0D8;color:#2d6a2d;border-color:#b2d9a8;}
+.action-btn.red{background:#FDECEA;color:#a32d2d;border-color:#f7c1c1;}
+.action-btn.blue{background:#e8f0fe;color:#1a56b0;border-color:#b8d0f9;}
+.action-btn.amber{background:#FFF3DC;color:#996600;border-color:#f0d080;}
+.dismiss-warning{background:#FDECEA;border:1px solid #f7c1c1;border-radius:7px;padding:8px 10px;font-size:11px;color:#a32d2d;margin-bottom:8px;display:flex;gap:7px;}
+.note-saved{font-size:10px;color:#2d6a2d;margin-top:3px;}
+.action-btn.dirty{background:#DFF0D8!important;color:#2d6a2d!important;border-color:#b2d9a8!important;font-weight:600;}
+.edit-form-section{border-top:1px solid #f0f0f0;padding-top:10px;margin-top:6px;}
+.edit-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:7px;}
+.edit-row input,.edit-row select,.edit-row textarea{flex:1;min-width:100px;font-size:12px;padding:6px 9px;border:1px solid #ddd;border-radius:7px;font-family:inherit;outline:none;background:#fff;}
+.add-form{background:#f9f8f5;border-radius:10px;border:1px solid #e5e5e5;padding:.9rem 1.1rem;margin-bottom:1.25rem;}
+.add-form h3{font-size:13px;font-weight:600;margin-bottom:9px;}
+.form-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:7px;}
+.form-row input,.form-row select,.form-row textarea{flex:1;min-width:100px;font-size:12px;padding:6px 9px;border:1px solid #ddd;border-radius:7px;font-family:inherit;outline:none;background:#fff;}
+.update-banner{font-size:11px;padding:6px 11px;background:#f5f5f5;border-radius:7px;margin-bottom:9px;}
+.count-info{font-size:11px;color:#bbb;margin-bottom:6px;}
+.empty{text-align:center;padding:2.5rem;color:#bbb;font-size:13px;}
+code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
+
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;}
+.lightbox img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px;}
+
+/* SEARCH X BUTTON */
+.search-wrap{position:relative;flex:1;min-width:160px;display:flex;align-items:center;}
+.search-wrap input{width:100%;padding-right:28px;}
+.search-clear{position:absolute;right:8px;font-size:14px;color:#aaa;cursor:pointer;display:none;line-height:1;background:none;border:none;padding:0;}
+.search-clear:hover{color:#666;}
+
+/* PROFILE CIRCLES */
+.profile-circles{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.profile-circle-wrap{display:flex;flex-direction:row;align-items:center;gap:3px;}
+.profile-circle-wrap.empty{visibility:hidden;pointer-events:none;}
+.profile-label{font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+.profile-label-full{font-size:10px;color:#888;text-align:center;}
+
+/* STATUS BADGE UPDATES */
+.badge-har{background:#e8f4e8;color:#2d6a2d;}
+.badge-bestill{background:#e8f0fe;color:#1a56b0;}
+.badge-meh{background:#f0f0f0;color:#999;}
+.action-btn.meh{background:#f0f0f0;color:#999;border-color:#ddd;}
+.action-btn.meh:hover{background:#e5e5e5;}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" style="display:none;position:fixed;inset:0;background:#f5f4f0;z-index:3000;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:#fff;border-radius:16px;border:1px solid #e5e5e5;width:100%;max-width:420px;padding:2rem;box-shadow:0 8px 32px rgba(0,0,0,.12);">
+    <div style="font-size:28px;margin-bottom:6px;">🍷</div>
+    <div style="font-size:20px;font-weight:600;margin-bottom:4px;">Vinbibliotek</div>
+    <div style="font-size:13px;color:#888;margin-bottom:1.5rem;">Koble til din JSONBin-database.</div>
+    <div style="font-size:11px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">JSONBin Bin ID</div>
+    <input id="setup-bin-id" placeholder="f.eks. 69ee057eaaba8821973c41c3" style="width:100%;font-size:13px;padding:9px 11px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-family:monospace;outline:none;"/>
+    <div style="font-size:11px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Access Key</div>
+    <input id="setup-access-key" type="password" placeholder="$2a$10$..." style="width:100%;font-size:13px;padding:9px 11px;border:1px solid #ddd;border-radius:8px;margin-bottom:6px;font-family:monospace;outline:none;"/>
+    <div style="font-size:11px;color:#888;margin-bottom:16px;line-height:1.5;">Finn disse på <a href="https://jsonbin.io" target="_blank" style="color:#1a56b0;">jsonbin.io</a> — Bin ID er i URL-en, Access Key under API Keys.</div>
+    <div id="setup-error" style="font-size:12px;color:#a32d2d;margin-bottom:10px;min-height:16px;"></div>
+    <button id="setup-btn" onclick="saveSetup()" style="width:100%;font-size:14px;font-weight:500;padding:10px;border-radius:8px;border:none;background:#1a1a1a;color:#fff;cursor:pointer;">Lagre og koble til</button>
+  </div>
+</div>
+
+<div id="app-root">
+<div class="container">
+  <div class="lib-header">
+    <div>
+      <div class="lib-title">🍷 Vinbibliotek</div>
+      <div class="lib-subtitle">Synkronisert via JSONBin · Offline-støtte</div>
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
+      <span id="sync-badge" class="sync-status sync-off">⏳ Laster...</span>
+      <button class="btn-small btn-backup" onclick="downloadBackup()">⬇ Backup</button>
+      <button class="btn-small" onclick="openSettings()" title="Innstillinger">⚙</button>
+      <button class="btn-small btn-primary" onclick="toggleManualForm()">+ Legg til vin</button>
+    </div>
+  </div>
+
+  <div id="update-banner"></div>
+
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <span class="toolbar-label">Søk</span>
+      <div class="search-wrap">
+        <input class="search-input" id="search" placeholder="Navn, drue, smak, mat..."
+          oninput="onSearchInput()" onkeydown="onSearchKey(event)" style="flex:1;min-width:0;"/>
+        <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+      </div>
+    </div>
+    <div class="toolbar-row">
+      <span class="toolbar-label">Type</span>
+      <button class="toggle-btn" id="tb-red"   onclick="toggleType('red')">🍷 Rød</button>
+      <button class="toggle-btn" id="tb-white" onclick="toggleType('white')">🥂 Hvit</button>
+      <button class="toggle-btn" id="tb-rose"  onclick="toggleType('rose')">🌸 Rosé</button>
+      <button class="toggle-btn" id="tb-other" onclick="toggleType('other')">🫙 Andre</button>
+    </div>
+    <div class="toolbar-row">
+      <span class="toolbar-label">Status</span>
+      <button class="toggle-btn" id="tb-alle"    onclick="toggleStatus('alle')">Alle</button>
+      <button class="toggle-btn" id="tb-har"     onclick="toggleStatus('har')">Har</button>
+      <button class="toggle-btn" id="tb-bestill" onclick="toggleStatus('bestill')">Bestill</button>
+      <button class="toggle-btn" id="tb-meh"     onclick="toggleStatus('meh')">Meh</button>
+    </div>
+    <div class="toolbar-row">
+      <span class="toolbar-label">Profil</span>
+      <div id="profil-circles-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;min-height:22px;">
+        <span style="font-size:10px;color:#ccc;font-style:italic;">Vises når profil er satt</span>
+      </div>
+    </div>
+    <div class="toolbar-row">
+      <span class="toolbar-label">Sorter</span>
+      <select class="sort-select" id="sort-by" onchange="onSortChange()">
+        <option value="custom">Egendefinert</option>
+        <option value="name">Alfabetisk</option>
+        <option value="price">Pris</option>
+        <option value="expert">Terningkast</option>
+        <option value="rating">Mine stjerner</option>
+        <option value="recent">Sist endret</option>
+      <option value="fylde">Fylde</option>
+      <option value="friskhet">Friskhet</option>
+      <option value="sodme">Sødme</option>
+      <option value="garvestoff">Garvestoff</option>
+      </select>
+      <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Bytt retning">↓</button>
+      <button class="toggle-btn" onclick="resetFilters()">✕ Nullstill</button>
+    </div>
+  </div>
+
+  <div id="add-form-container" style="display:none;"></div>
+  <div id="wine-list"></div>
+  <div id="modal-container"></div>
+  <div id="lightbox-container"></div>
+</div>
+</div>
+
+<script>
+/* ── CONFIG ── */
+const LS_KEY     = 'vinbibliotek_wines_v2';
+const LS_SETUP   = 'vinbibliotek_setup_v1';
+const LS_ORDER   = 'vinbibliotek_order_v1'; // custom sort order
+const VMP_IMG    = 'https://bilder.vinmonopolet.no/cache/300x300-0/';
+const VMP_PROXY  = 'https://vinmonopol-proxy.esandal.workers.dev/';
+const VIV_IMG    = 'https://images.vivino.com/thumbs/';
+
+function getConfig(){try{return JSON.parse(localStorage.getItem(LS_SETUP))||{};}catch(e){return {};}}
+function getBinUrl(){const id=getConfig().binId;return id?`https://api.jsonbin.io/v3/b/${id}`:null;}
+function getAccessKey(){return getConfig().accessKey||null;}
+function isConfigured(){const c=getConfig();return !!(c.binId&&c.accessKey);}
+
+/* ── STATE ── */
+let wines=[];
+let customOrder=[]; // array of wine ids in custom order
+let activeTypes=new Set();
+let activeStatuses=new Set(['alle']); // default: show all (except meh)
+let sortBy='custom';
+let sortAsc=false; // false = descending for most fields
+let showManual=false;
+let selectedId=null;
+let editRating=0;
+let isSyncing=false;
+let dragSrcId=null;
+let isDirty=false, originalNote='', originalRating=0;
+
+/* ── SETUP ── */
+function showSetupScreen(){document.getElementById('app-root').style.display='none';document.getElementById('setup-screen').style.display='flex';}
+function hideSetupScreen(){document.getElementById('setup-screen').style.display='none';document.getElementById('app-root').style.display='block';}
+async function saveSetup(){
+  const binId=document.getElementById('setup-bin-id').value.trim();
+  const accessKey=document.getElementById('setup-access-key').value.trim();
+  const err=document.getElementById('setup-error');
+  if(!binId||!accessKey){err.textContent='Begge feltene er påkrevd.';return;}
+  err.textContent='';document.getElementById('setup-btn').textContent='Tester...';
+  try{
+    const res=await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{headers:{'X-Access-Key':accessKey}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    localStorage.setItem(LS_SETUP,JSON.stringify({binId,accessKey}));
+    hideSetupScreen();await bootApp();
+  }catch(e){document.getElementById('setup-btn').textContent='Lagre og koble til';err.textContent='⚠ Kunne ikke koble til. Sjekk ID og nøkkel.';}
+}
+function openSettings(){
+  const c=getConfig();
+  document.getElementById('setup-bin-id').value=c.binId||'';
+  document.getElementById('setup-access-key').value=c.accessKey||'';
+  document.getElementById('setup-error').textContent='';
+  document.getElementById('setup-btn').textContent='Lagre og koble til';
+  showSetupScreen();
+}
+
+/* ── SYNC ── */
+function setSyncBadge(s,t){const el=document.getElementById('sync-badge');if(!el)return;el.className='sync-status sync-'+s;el.textContent=t;}
+function loadLocal(){
+  try{
+    const r=localStorage.getItem(LS_KEY);wines=r?JSON.parse(r):[];
+    const o=localStorage.getItem(LS_ORDER);customOrder=o?JSON.parse(o):[];
+  }catch(e){wines=[];customOrder=[];}
+}
+function saveLocal(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify(wines));localStorage.setItem(LS_ORDER,JSON.stringify(customOrder));}catch(e){}
+}
+async function fetchCloud(){
+  const url=getBinUrl(),key=getAccessKey();
+  if(!url||!key)throw new Error('Ikke konfigurert');
+  const res=await fetch(url+'/latest',{headers:{'X-Access-Key':key}});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const data=await res.json();
+  // support both {wines,order} and plain array
+  if(data.record&&data.record.wines){customOrder=data.record.order||[];return data.record.wines;}
+  return Array.isArray(data.record)?data.record:[];
+}
+async function pushCloud(){
+  const url=getBinUrl(),key=getAccessKey();
+  if(!url||!key)throw new Error('Ikke konfigurert');
+  const payload={wines,order:customOrder};
+  const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json','X-Access-Key':key},body:JSON.stringify(payload)});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+}
+function mergeWines(local,cloud){
+  // Two independent timestamps:
+  // updatedAt      = user data (note, rating, status, type, image)
+  // priceUpdatedAt = price fields (price, priceDate)
+  // Each field group: newest timestamp wins — they never interfere
+  const map={};
+  cloud.forEach(w=>map[w.id]={...w});
+  local.forEach(w=>{
+    if(!map[w.id]){map[w.id]={...w};return;}
+    const c=map[w.id];
+    // merge user data fields
+    if((w.updatedAt||0)>=(c.updatedAt||0)){
+      c.note=w.note; c.rating=w.rating; c.status=w.status;
+      c.type=w.type; c.localImg=w.localImg; c.updatedAt=w.updatedAt;
+    }
+    // merge price fields
+    if((w.priceUpdatedAt||0)>=(c.priceUpdatedAt||0)){
+      c.price=w.price; c.priceDate=w.priceDate; c.priceUpdatedAt=w.priceUpdatedAt;
+    }
+  });
+  return Object.values(map).sort((a,b)=>a.id-b.id);
+}
+async function syncWithCloud(){
+  if(isSyncing)return;isSyncing=true;setSyncBadge('wait','⟳ Syncer...');
+  try{
+    const cloudWines=await fetchCloud();
+    if(wines.length===0&&cloudWines.length>0){wines=cloudWines;ensureOrder();saveLocal();render();setSyncBadge('ok','✓ Synkronisert');isSyncing=false;return;}
+    const merged=mergeWines(wines,cloudWines);
+    const changed=JSON.stringify({wines:merged,order:customOrder})!==JSON.stringify({wines:cloudWines,order:customOrder});
+    if(changed){wines=merged;ensureOrder();await pushCloud();}
+    else wines=merged;
+    saveLocal();render();setSyncBadge('ok','✓ Synkronisert');
+  }catch(e){setSyncBadge('err','⚠ Offline');}
+  isSyncing=false;
+}
+async function saveWine(wine){
+  wine.updatedAt=Date.now();
+  // Note: priceUpdatedAt is NOT touched here — only set by price update scripts
+  const idx=wines.findIndex(w=>w.id===wine.id);
+  if(idx>=0)wines[idx]=wine;else{wines.push(wine);customOrder.push(wine.id);}
+  saveLocal();render();
+  // Push directly to cloud — do NOT fetch+merge here, local is authoritative after a save
+  if(navigator.onLine){
+    setSyncBadge('wait','⟳ Lagrer...');
+    try{
+      await pushCloud();
+      setSyncBadge('ok','✓ Synkronisert');
+    }catch(e){
+      setSyncBadge('err','⚠ Offline');
+    }
+  } else {
+    setSyncBadge('wait','⏳ Venter på nett');
+  }
+}
+window.addEventListener('online',()=>syncWithCloud());
+window.addEventListener('offline',()=>setSyncBadge('wait','⏳ Offline'));
+
+/* ── CUSTOM ORDER ── */
+function ensureOrder(){
+  // add any missing ids, remove deleted
+  const ids=wines.map(w=>w.id);
+  customOrder=customOrder.filter(id=>ids.includes(id));
+  ids.forEach(id=>{if(!customOrder.includes(id))customOrder.push(id);});
+}
+
+/* ── BACKUP ── */
+function downloadBackup(){
+  const blob=new Blob([JSON.stringify({wines,order:customOrder},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vinbibliotek-backup-'+nowLabel()+'.json';a.click();
+}
+
+/* ── FILTERS ── */
+/* ── SEARCH ── */
+function onSearchInput(){
+  render();
+  const val=document.getElementById('search').value;
+  const btn=document.getElementById('search-clear');
+  if(btn) btn.style.display=val?'block':'none';
+}
+function onSearchKey(e){
+  if(e.key==='Escape'){clearSearch();e.target.blur();}
+}
+function clearSearch(){
+  const el=document.getElementById('search');
+  if(el){el.value='';el.blur();}
+  const btn=document.getElementById('search-clear');
+  if(btn) btn.style.display='none';
+  render();
+}
+
+function toggleType(t){activeTypes.has(t)?activeTypes.delete(t):activeTypes.add(t);updateToolbar();render();}
+function toggleStatus(s){
+  // Alle and Meh are exclusive — selecting either clears all others
+  if(s==='alle'||s==='meh'){
+    activeStatuses.clear();
+    activeStatuses.add(s);
+  } else {
+    // har/bestill: remove alle and meh if present
+    activeStatuses.delete('alle');
+    activeStatuses.delete('meh');
+    if(activeStatuses.has(s)) activeStatuses.delete(s);
+    else activeStatuses.add(s);
+    // if nothing left, default back to alle
+    if(activeStatuses.size===0) activeStatuses.add('alle');
+  }
+  updateToolbar();render();
+}
+function resetFilters(){activeTypes.clear();activeStatuses.clear();activeStatuses.add('alle');document.getElementById('sort-by').value='custom';sortBy='custom';sortAsc=false;document.getElementById('sort-dir-btn').textContent='↓';updateToolbar();render();}
+function updateToolbar(){
+  ['red','white','rose','other'].forEach(t=>{const b=document.getElementById('tb-'+t);b.className='toggle-btn'+(activeTypes.has(t)?' active-type-'+t:'');});
+  ['alle','har','bestill','meh'].forEach(s=>{const b=document.getElementById('tb-'+s);if(b)b.className='toggle-btn'+(activeStatuses.has(s)?' active-status':'');});
+}
+function onSortChange(){sortBy=document.getElementById('sort-by').value;render();}
+function toggleSortDir(){sortAsc=!sortAsc;document.getElementById('sort-dir-btn').textContent=sortAsc?'↑':'↓';render();}
+
+/* ── STATUS LOGIC ── */
+// Statuses: null/undefined = no status, 'har', 'bestill', 'meh'
+// A wine with no status shows under 'alle' (all except meh)
+// 'meh' wines only show when meh filter active
+function effectiveStatus(w){return w.status||null;}
+function hasTasted(w){return !!(w.rating||(w.note&&w.note.trim()));}
+function wineMatchesFilter(w){
+  const st=effectiveStatus(w);
+  if(activeStatuses.has('alle')) return st!=='meh';
+  if(activeStatuses.has('meh'))  return st==='meh';
+  // har/bestill combination
+  return activeStatuses.has(st);
+}
+
+/* ── IMAGE ── */
+function getImgSrc(w){
+  if(w.localImg)return w.localImg; // base64 uploaded image
+  if(w.vmpId)return VMP_IMG+w.vmpId+'-1.jpg';
+  if(w.vivinoHash)return VIV_IMG+w.vivinoHash+'_pb_x600.png';
+  return null;
+}
+function imgAreaHTML(w,height,clickable=false){
+  const src=getImgSrc(w);
+  const iconSz=height>180?60:48;
+  const uid=w.id+'-'+height;
+  const ph=`<div id="ph-${uid}" style="display:none;align-items:center;justify-content:center;width:100%;height:100%;">${typeIcon(w.type,iconSz)}</div>`;
+  const clickAttr=clickable?`onclick="openLightbox('${uid}')" style="max-width:100%;max-height:${height}px;object-fit:contain;padding:12px;cursor:zoom-in;"`:
+    `style="max-width:100%;max-height:${height}px;object-fit:contain;padding:7px;"`;
+  const showPh=`document.getElementById('ph-${uid}').style.display='flex'`;
+  if(!src)return `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${typeIcon(w.type,iconSz)}</div>`;
+  const vmpSrc=w.vmpId&&!w.localImg&&!w.vivinoHash?VMP_IMG+w.vmpId+'-1.jpg':null;
+  const vivSrc=w.vivinoHash&&!w.localImg?VIV_IMG+w.vivinoHash+'_pb_x600.png':null;
+  if(w.localImg){
+    return `<img id="imgel-${uid}" src="${src}" ${clickAttr} onerror="this.style.display='none';${showPh}" />${ph}`;
+  }
+  if(vmpSrc&&vivSrc){
+    return `<img id="imgel-${uid}" src="${vmpSrc}" ${clickAttr} onerror="this.src='${vivSrc}';this.onerror=function(){this.style.display='none';${showPh}}" />${ph}`;
+  }
+  return `<img id="imgel-${uid}" src="${src}" ${clickAttr} onerror="this.style.display='none';${showPh}" />${ph}`;
+}
+
+/* ── LIGHTBOX ── */
+function openLightbox(uid){
+  const img=document.getElementById('imgel-'+uid);
+  if(!img)return;
+  const lb=document.getElementById('lightbox-container');
+  lb.innerHTML=`<div class="lightbox" onclick="closeLightbox()"><img src="${img.src}" /></div>`;
+}
+function closeLightbox(){document.getElementById('lightbox-container').innerHTML='';}
+
+/* ── PROFILE CIRCLES ── */
+function profileCircleSVG(val, color, sz=18){
+  // val is on 1-12 scale from Vinmonopolet
+  if(val===null||val===undefined) return '';
+  const r=sz/2, cx=r, cy=r, radius=r-1.5;
+  const pct = (val-1)/11; // convert 1-12 to 0-1
+  if(pct>=1){
+    return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${color}" stroke="#ddd" stroke-width="1"/>
+    </svg>`;
+  }
+  if(pct<=0){
+    return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+    </svg>`;
+  }
+  const angle=pct*Math.PI*2;
+  const x=cx+radius*Math.sin(angle);
+  const y=cy-radius*Math.cos(angle);
+  const large=pct>0.5?1:0;
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+    <path d="M${cx},${cy} L${cx},${cy-radius} A${radius},${radius} 0 ${large},1 ${x},${y} Z" fill="${color}"/>
+    <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#ddd" stroke-width="1"/>
+  </svg>`;
+}
+function profileCirclesHTML(w, small=true){
+  const sz=small?14:22;
+  // Profile slots depend on wine type:
+  // white/rose: FYL, FRI, SØD
+  // red:        FYL, FRI, GAR (garvestoff)
+  // other:      FYL, FRI
+  let profiles;
+  if(w.type==='red'){
+    profiles=[
+      {key:'fylde',      label:'FYL', labelFull:'Fylde',       color:'#8B5CF6'},
+      {key:'friskhet',   label:'FRI', labelFull:'Friskhet',    color:'#06B6D4'},
+      {key:'garvestoff', label:'GAR', labelFull:'Garvestoff',  color:'#EF4444'},
+    ];
+  } else if(w.type==='white'||w.type==='rose'){
+    profiles=[
+      {key:'fylde',    label:'FYL', labelFull:'Fylde',    color:'#8B5CF6'},
+      {key:'friskhet', label:'FRI', labelFull:'Friskhet', color:'#06B6D4'},
+      {key:'sodme',    label:'SØD', labelFull:'Sødme',    color:'#F59E0B'},
+    ];
+  } else {
+    return ''; // Andre: ingen profilsirkler
+  }
+  const anyVal=profiles.some(p=>w[p.key]!=null);
+  if(!anyVal) return '';
+  const circles=profiles.map(p=>{
+    const val=w[p.key];
+    const isEmpty=val==null;
+    const labelStr=small
+      ? p.label
+      : `${p.labelFull} <span style="color:#bbb;font-size:10px;">${val!=null?val+'/12':''}</span>`;
+    return `<div class="profile-circle-wrap${isEmpty?' empty':''}">
+      ${isEmpty?`<div style="width:${sz}px;height:${sz}px;"></div>`:profileCircleSVG(val,p.color,sz)}
+      <span class="${small?'profile-label':'profile-label-full'}">${labelStr}</span>
+    </div>`;
+  }).join('');
+  return `<div class="profile-circles">${circles}</div>`;
+}
+
+/* ── DICE ── */
+function diceSVG(n,sz=18){
+  const dp={1:[[.5,.5]],2:[[.3,.3],[.7,.7]],3:[[.3,.3],[.5,.5],[.7,.7]],4:[[.3,.3],[.7,.3],[.3,.7],[.7,.7]],5:[[.3,.3],[.7,.3],[.5,.5],[.3,.7],[.7,.7]],6:[[.3,.25],[.7,.25],[.3,.5],[.7,.5],[.3,.75],[.7,.75]]};
+  const face=dp[Math.min(6,Math.max(1,Math.round(n)))]||dp[1];
+  const r=Math.round(sz*.14),dr=Math.round(sz*.09);
+  const dots=face.map(([x,y])=>`<circle cx="${Math.round(x*sz)}" cy="${Math.round(y*sz)}" r="${dr}" fill="#1a1a1a"/>`).join('');
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><rect x="1" y="1" width="${sz-2}" height="${sz-2}" rx="${r}" fill="#fff" stroke="#ccc" stroke-width="1.2"/>${dots}</svg>`;
+}
+
+/* ── TYPE ICONS ── */
+function whiteGlassIcon(sz){return `<svg width="${sz}" height="${sz}" viewBox="0 0 20 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 2 C6 5 5.5 8 6.5 11 C7.2 13.2 8.5 14.5 10 14.5 C11.5 14.5 12.8 13.2 13.5 11 C14.5 8 14 5 13 2 Z" fill="#F5E840" stroke="#A89010" stroke-width="1"/><line x1="10" y1="14.5" x2="10" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="21" x2="13" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/></svg>`;}
+function roseGlassIcon(sz){return `<svg width="${sz}" height="${sz}" viewBox="0 0 20 24" xmlns="http://www.w3.org/2000/svg"><ellipse cx="10" cy="9" rx="7" ry="7" fill="#F4A0B0" stroke="#C0405A" stroke-width="1"/><path d="M3.5 9 Q4 13.5 10 14.5 Q16 13.5 16.5 9" fill="rgba(255,255,255,0.25)" stroke="none"/><path d="M6.5 2.5 Q8 4 10 4 Q12 4 13.5 2.5" fill="none" stroke="#C0405A" stroke-width="0.8"/><line x1="10" y1="16" x2="10" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="21" x2="13" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/></svg>`;}
+function redGlassIcon(sz){return `<svg width="${sz}" height="${sz}" viewBox="0 0 20 24" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 2 C3 5.5 4 9.5 6 12 C7.5 13.8 8.8 14.5 10 14.5 C11.2 14.5 12.5 13.8 14 12 C16 9.5 17 5.5 16.5 2 Z" fill="#C03030" stroke="#801818" stroke-width="1"/><path d="M3.5 2 Q5 6 10 6 Q15 6 16.5 2" fill="rgba(255,255,255,0.15)" stroke="none"/><line x1="10" y1="14.5" x2="10" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="21" x2="13" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/></svg>`;}
+function otherGlassIcon(sz){return `<svg width="${sz}" height="${sz}" viewBox="0 0 20 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 2 L14 2 L13 10 Q12 14 10 14.5 Q8 14 7 10 Z" fill="#b0b0b0" stroke="#888" stroke-width="1"/><line x1="10" y1="14.5" x2="10" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="21" x2="13" y2="21" stroke="#bbb" stroke-width="1.2" stroke-linecap="round"/></svg>`;}
+function typeIcon(t,sz=16){if(t==='white')return whiteGlassIcon(sz);if(t==='rose')return roseGlassIcon(sz);if(t==='other')return otherGlassIcon(sz);return redGlassIcon(sz);}
+function typeLabel(t){return {white:'Hvit',rose:'Rosé',red:'Rød',other:'Andre'}[t]||t;}
+function typeHeading(t){return {red:'🍷 Rødviner',white:'🥂 Hvite viner',rose:'🌸 Rosévin',other:'🫙 Andre'}[t]||t;}
+function scoreTag(w){return w.expertSource==='IT'?'IT':'GV';}
+function nowLabel(){const m=['JAN','FEB','MAR','APR','MAI','JUN','JUL','AUG','SEP','OKT','NOV','DES'][new Date().getMonth()];return m+String(new Date().getFullYear()).slice(2);}
+function nextId(){return wines.length?Math.max(...wines.map(w=>w.id))+1:1;}
+
+/* ── DEFAULT WINES ── */
+const defaultWines=[
+  {id:1,name:'Fun Fuel Riesling',region:'Rheinhessen, Tyskland',grape:'Riesling',type:'white',price:145,priceDate:'APR26',vmpId:'16349201',vivinoHash:null,status:null,taste:'Eple, sitrus, litt drops',food:'Aperitiff, sushi, spicy mat',expertScore:3,expertSource:'GV',desc:'Frisk og lett med eple og sitrus. Litt sødme som gjør den enkel å like. Ukrevende hverdagsvin til budsjettprisen.',note:'',rating:0,updatedAt:1},
+  {id:2,name:'Seckinger Deidesheim Mäushöhle Riesling Erste Lage 2025',region:'Pfalz, Tyskland',grape:'Riesling',type:'white',price:198,priceDate:'APR26',vmpId:'19705401',vivinoHash:null,status:null,taste:'Lime, gul steinfrukt, eple, flintrøyk',food:'Skalldyr, fisk, lyst kjøtt',expertScore:5,expertSource:'GV',desc:'Stram og frisk med lime og gul steinfrukt. Spontanfermentert og lagret på fat gir kompleksitet. Ren og fokusert vin som sitter lenge — høy kvalitet for prisen.',note:'',rating:0,updatedAt:1},
+  {id:3,name:'Poggio Allora Vernaccia di San Gimignano 2024',region:'Toscana, Italia',grape:'Vernaccia',type:'white',price:181,priceDate:'APR26',vmpId:null,vivinoHash:'QI7EheAHRnygnrtSuYPk4A',status:null,taste:'Sitron, mandel, urter',food:'Fisk, pasta, salater',expertScore:4,expertSource:'GV',desc:'Tørr med sitrus og et lite bitt av mandel. Litt rund i kantene. Fin balanse mellom friskhet og mykhet — god hverdagsvin til maten.',note:'',rating:0,updatedAt:1},
+  {id:4,name:'Brandini Langhe Arneis La Margherite 2024',region:'Piemonte, Italia',grape:'Arneis',type:'white',price:250,priceDate:'APR26',vmpId:null,vivinoHash:'SZn967qJSJWokzj5AIfqtw',status:null,taste:'Pære, blomster, nøtter',food:'Kylling, kremet pasta, skalldyr',expertScore:4,expertSource:'GV',desc:'Smaker av moden pære og blomster med nøttepreget avslutning. Litt rund og fyldig — har nok kropp til å løfte kremet mat.',note:'',rating:0,updatedAt:1},
+  {id:5,name:'Gmeinböck Grüner Veltliner Muschelkalk',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:169,priceDate:'APR26',vmpId:null,vivinoHash:'UZ3PnV5AQTClBCF2L850MQ',status:null,taste:'Sitrus, pepper, mineral, frisk',food:'Fisk, salater, grønnsaker, kylling',expertScore:4,expertSource:'GV',desc:'Frisk og sprø med sitrus og et lite pepperpreg. Ren stil fra kalkholdig jord. Veldig allsidig til mat — beste kjøp i Grüner-kategorien.',note:'',rating:0,updatedAt:1},
+  {id:6,name:'Kracher Grüner Veltliner 2023',region:'Burgenland, Østerrike',grape:'Grüner Veltliner',type:'white',price:239,priceDate:'APR26',vmpId:null,vivinoHash:'lpYtigHwQWCuQpUDciJbYA',status:null,taste:'Sitrus, urter, hvit pepper, mineralsk',food:'Fisk, ost, grønnsaker',expertScore:4,expertSource:'GV',desc:'Strammere og mer konsentrert enn klassisk Grüner. Sitrus og urter med litt trykk og mineralitet. Føles mer seriøs og varer lenge.',note:'',rating:0,updatedAt:1},
+  {id:7,name:'Neustifter Exklusiv Grüner Veltliner',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:198,priceDate:'APR26',vmpId:'17151001',vivinoHash:null,status:null,taste:'Sitrus, pepper, melon, klassisk',food:'Salater, fisk, hvit kjøtt',expertScore:3,expertSource:'GV',desc:'Klassisk Grüner-stil med sitrus og litt pepper. Ren og balansert, litt fyldig avslutning. Ikke komplisert, men god og trygg.',note:'',rating:0,updatedAt:1},
+  {id:8,name:'Pfaffl Weinviertel Zeisen Grüner Veltliner 2020',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:254,priceDate:'APR26',vmpId:'10544901',vivinoHash:null,status:null,taste:'Moden frukt, krydder, urter, bitter avslutning',food:'Svin, asiatisk mat, kremet pasta',expertScore:4,expertSource:'GV',desc:'Litt rikere med moden frukt og krydder. Har mer tyngde enn de yngre Grünerne. Smaker mer og varer lengre — best av de fire til kraftigere mat.',note:'',rating:0,updatedAt:1},
+  {id:9,name:'Fontanafredda Solerose Langhe Rosato 2022',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera/Dolcetto',type:'rose',price:250,priceDate:'APR26',vmpId:'9741901',vivinoHash:null,status:null,taste:'Jordbær, bringebær, urter, frisk',food:'Sommermat, salater, fisk, antipasti',expertScore:4,expertSource:'GV',desc:'Frisk rosé med røde bær og litt urter. Tørr og elegant fra Piemonte. Sommerlig og lett å like — fungerer like godt alene som til mat.',note:'',rating:0,updatedAt:1},
+  {id:10,name:'Enzo Bartoli Langhe Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:175,priceDate:'APR26',vmpId:'11312001',vivinoHash:null,status:null,taste:'Kirsebær, roser, litt tannin',food:'Pizza, pasta, spekemat',expertScore:3,expertSource:'GV',desc:'Lys og frisk med kirsebær og rosduft. Litt tørr i munnen fra nebbiolo-tanniner. God og enkel inngang til druen uten å sprenge budsjettet.',note:'',rating:0,updatedAt:1},
+  {id:11,name:'Pietro di Campo Monferrato Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:179,priceDate:'APR26',vmpId:null,vivinoHash:'nK53OekCT9OFYELvCO9L6g',status:null,taste:'Røde bær, mild, enkel',food:'Pizza, pasta, enkel kjøttmat',expertScore:3,expertSource:'GV',desc:'Mild og ganske enkel. Litt røde bær og lite motstand. Mer volum enn opplevelse — 100cl gjør det til mye vin for pengene.',note:'',rating:0,updatedAt:1},
+  {id:12,name:'F.lli. Giacosa Langhe Nebbiolo Leunin 2023',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:219,priceDate:'APR26',vmpId:'7018701',vivinoHash:null,status:null,taste:'Kirsebær, nype, urter, fat',food:'Kjøtt, ost, sopp',expertScore:4,expertSource:'GV',desc:'Strammere med tydeligere tanniner og mer dybde. Kirsebær, nype og litt fat. Føles mer seriøs enn de enklere nebbioloane.',note:'',rating:0,updatedAt:1},
+  {id:13,name:'Malvirà Nudo Langhe Nebbiolo 2022',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:314,priceDate:'APR26',vmpId:'11847301',vivinoHash:null,status:null,taste:'Kirsebær, urter, tørket rose, tobakk',food:'Kjøtt, sopp, vilt',expertScore:5,expertSource:'GV',desc:'Ren og presis med dypere smak av kirsebær og urter. Stram, men balansert med lang avslutning. Best i nebbiolo-kategorien — verdt prisen.',note:'',rating:0,updatedAt:1},
+  {id:14,name:'Kaltern Alto Adige Edelvernatsch 2023',region:'Alto Adige, Italia',grape:'Schiava',type:'red',price:205,priceDate:'APR26',vmpId:null,vivinoHash:'_0j-tYkXQSW3uK3gy0pEtQ',status:null,taste:'Røde bær, saftig, blomster, lett',food:'Lunsj, spekemat, kylling, pizza',expertScore:3,expertSource:'GV',desc:'Svært lett og saftig med røde bær og blomsterduft. Nesten juice-aktig friskhet. Ukomplisert og sjarmerende — perfekt til lunsj eller lett sommermat.',note:'',rating:0,updatedAt:1},
+  {id:15,name:'Tedeschi Valpolicella Classico Lucchine 2024',region:'Veneto, Italia',grape:'Corvina/Corvinone/Rondinella',type:'red',price:194,priceDate:'APR26',vmpId:'5127201',vivinoHash:null,status:null,taste:'Kirsebær, urter, frisk, lett',food:'Pizza, pasta, enkel kjøttmat',expertScore:4,expertSource:'GV',desc:'Frisk og lett med kirsebær og urter. Klassisk Valpolicella fra pålitelig produsent. Veldig anvendelig til hverdagsmat.',note:'',rating:0,updatedAt:1},
+  {id:16,name:'Icardi Pafoj Langhe Rosso',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera',type:'red',price:265,priceDate:'APR26',vmpId:null,vivinoHash:'tRHAFYvOTGW8j_acZJuy4g',status:null,taste:'Mørke bær, myk, fyldig, litt vanilje',food:'Kjøttmat, gryte, pasta bolognese',expertScore:4,expertSource:'GV',desc:'Mykere og rundere med mørkere bær og litt fatkrydder. Litt mer fylde enn de enklere Langhe-vinene. Behagelig og lett å like til mat.',note:'',rating:0,updatedAt:1},
+  {id:17,name:'Fun Fuel Shiraz',region:'Sør-Afrika',grape:'Shiraz',type:'red',price:145,priceDate:'APR26',vmpId:'16274501',vivinoHash:null,status:null,taste:'Mørke bær, krydder, pepper, fyldig',food:'Grill, burger, sterk mat',expertScore:3,expertSource:'GV',desc:'Fyldig med mørke bær og litt krydder og pepper. Enkel i uttrykket men veldig lett å like. God budsjettvin til grillmat.',note:'',rating:0,updatedAt:1},
+  {id:18,name:'Dom. Wachau Glühwein',region:'Wachau, Østerrike',grape:'Rød blend',type:'other',price:null,priceDate:'APR26',vmpId:'11323501',vivinoHash:null,status:null,taste:'Søt, kanel, nellik, appelsin',food:'Varm drikke, julemat, kos',expertScore:3,expertSource:'GV',desc:'Søt og krydret med kanel, nellik og appelsin. Varm og fyldig gløgg fra Wachau. Mer kos enn vinopplevelse.',note:'',rating:0,updatedAt:1}
+];
+
+/* ── FILTER + SORT ── */
+function getFiltered(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  // status filter logic
+  // default (nothing selected): show all except boring
+  // if 'boring' selected: show boring
+  // if 'pending' selected: show pending
+  // if 'all' selected: show 'all' status
+  // combinations work independently
+  let list=wines.filter(w=>{
+    const typeOk=activeTypes.size===0||activeTypes.has(w.type);
+    const statusOk=wineMatchesFilter(w);
+    const searchOk=!q||[w.name,w.grape,w.region,w.taste,w.desc,w.note,w.food].some(s=>s&&s.toLowerCase().includes(q));
+    return typeOk&&statusOk&&searchOk;
+  });
+
+  if(sortBy==='custom'){
+    // sort by customOrder, preserving relative order of other types if filtered
+    const orderMap={};customOrder.forEach((id,i)=>orderMap[id]=i);
+    list.sort((a,b)=>(orderMap[a.id]??9999)-(orderMap[b.id]??9999));
+    return list;
+  }
+
+  list.sort((a,b)=>{
+    let va,vb;
+    if(sortBy==='name'){va=a.name.toLowerCase();vb=b.name.toLowerCase();}
+    else if(sortBy==='price'){va=a.price||0;vb=b.price||0;}
+    else if(sortBy==='expert'){va=a.expertScore||0;vb=b.expertScore||0;}
+    else if(sortBy==='rating'){va=a.rating||0;vb=b.rating||0;}
+    else if(sortBy==='recent'){va=a.updatedAt||0;vb=b.updatedAt||0;}
+    else if(sortBy==='fylde'){va=a.fylde||0;vb=b.fylde||0;}
+    else if(sortBy==='friskhet'){va=a.friskhet||0;vb=b.friskhet||0;}
+    else if(sortBy==='sodme'){va=a.sodme||0;vb=b.sodme||0;}
+    else if(sortBy==='garvestoff'){va=a.garvestoff||0;vb=b.garvestoff||0;}
+    else{va=a.id;vb=b.id;}
+    if(va<vb)return sortAsc?-1:1;
+    if(va>vb)return sortAsc?1:-1;
+    return 0;
+  });
+  return list;
+}
+
+function render(){
+  const list=getFiltered();
+  const isCustom=sortBy==='custom';
+  const groups={red:[],white:[],rose:[],other:[]};
+  list.forEach(w=>(groups[w.type]||[]).push(w));
+  let html=`<div class="count-info">${list.length} vin${list.length!==1?'er':''} vist</div>`;
+
+  if(!isCustom||activeTypes.size>0){
+    // flat list or sorted — no type grouping
+    if(list.length){
+      html+=`<div class="grid${isCustom?' sort-custom':''}">${list.map(w=>cardHTML(w,isCustom)).join('')}</div>`;
+    } else {
+      html+='<div class="empty">Ingen viner funnet.</div>';
+    }
+  } else {
+    // grouped by type in custom order
+    ['red','white','rose','other'].forEach(t=>{
+      if(!groups[t].length)return;
+      html+=`<div class="section-label">${typeHeading(t)}</div>`;
+      html+=`<div class="grid sort-custom">${groups[t].map(w=>cardHTML(w,true)).join('')}</div>`;
+    });
+    if(!list.length)html+='<div class="empty">Ingen viner funnet.</div>';
+  }
+  document.getElementById('wine-list').innerHTML=html;
+  if(isCustom)initDrag();
+}
+
+function cardHTML(w,draggable=false){
+  const st=effectiveStatus(w);
+  const badge=st==='pending'?'<span class="status-badge badge-pending">Ikke smakt</span>':
+    st==='boring'?'<span class="status-badge badge-boring">Boring</span>':'';
+  const diceRow=w.expertScore?`<div class="card-dice-row">${diceSVG(w.expertScore,14)}<span style="font-size:9px;color:#999;font-weight:600;">${scoreTag(w)}</span></div>`:'';
+  const profRow=profileCirclesHTML(w,true);
+  const profSection=profRow?`<div style="margin-bottom:3px;">${profRow}</div>`:'';
+  const userStars=w.rating?`<div style="display:flex;gap:1px;margin-bottom:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:10px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:'';
+  const dragAttr=draggable?`draggable="true" data-id="${w.id}"`:'' ;
+  const handle=draggable?`<div class="drag-handle">⠿</div>`:'';
+  return `<div class="wine-card${st==='boring'?' boring':''}" ${dragAttr} onclick="openModal(${w.id})" style="position:relative;">
+    ${handle}
+    <div class="card-img-area">${imgAreaHTML(w,155)}<div class="type-icon-badge">${typeIcon(w.type,14)}</div></div>
+    <div class="card-body">${diceRow}${profSection}${userStars}
+      <div class="card-name">${w.name}</div>
+      <div class="card-sub">${w.grape} · ${w.region}</div>
+      <div class="card-footer">
+        <div><span class="price-val">${w.price?Math.round(w.price)+' kr':'—'}</span>${w.priceDate?`<span class="price-date">${w.priceDate}</span>`:''}</div>
+        ${badge}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── DRAG AND DROP (custom sort) ── */
+function initDrag(){
+  document.querySelectorAll('.wine-card[draggable]').forEach(card=>{
+    card.addEventListener('dragstart',e=>{
+      dragSrcId=parseInt(card.dataset.id);
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+    });
+    card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+    card.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';card.classList.add('drag-over');});
+    card.addEventListener('dragleave',()=>card.classList.remove('drag-over'));
+    card.addEventListener('drop',e=>{
+      e.preventDefault();card.classList.remove('drag-over');
+      const targetId=parseInt(card.dataset.id);
+      if(dragSrcId===targetId)return;
+      // move dragSrcId to position of targetId in customOrder
+      const srcIdx=customOrder.indexOf(dragSrcId);
+      const tgtIdx=customOrder.indexOf(targetId);
+      if(srcIdx<0||tgtIdx<0)return;
+      customOrder.splice(srcIdx,1);
+      customOrder.splice(tgtIdx,0,dragSrcId);
+      saveLocal();
+      if(navigator.onLine)syncWithCloud();
+      render();
+    });
+  });
+}
+
+/* ── MODAL ── */
+function openModal(id){
+  selectedId=id;
+  const w=wines.find(x=>x.id===id);if(!w)return;
+  editRating=w.rating||0;renderModal(w);
+}
+
+function renderModal(w, editMode=false){
+  const st=effectiveStatus(w);
+  const tasted=hasTasted(w);
+  // status buttons — har/bestill toggles
+  const harBtn=st!=='meh'?`<button class="action-btn${st==='har'?' green':''}" onclick="toggleWineStatus(${w.id},'har')">${st==='har'?'✓ Har':'Har'}</button>`:'';
+  const bestillBtn=st!=='meh'?`<button class="action-btn${st==='bestill'?' blue':''}" onclick="toggleWineStatus(${w.id},'bestill')">${st==='bestill'?'✓ Bestill':'Bestill'}</button>`:'';
+  const imgBtns=`<div class="img-btn-row">
+    <button class="img-btn" onclick="triggerImgUpload(${w.id})">📂 Endre foto</button>
+    <button class="img-btn" onclick="findPhoto(${w.id})">🔍 Finn foto</button>
+  </div>
+  <input type="file" id="img-upload-${w.id}" accept="image/*" style="display:none;" onchange="handleImgUpload(event,${w.id})"/>`;
+
+  // ── VIEW MODE ──
+  const typeOpts=['red','white','rose','other'].map(t=>`<option value="${t}"${w.type===t?' selected':''}>${typeLabel(t)}</option>`).join('');
+  const scoreOpts=['','1','2','3','4','5','6'].map(v=>`<option value="${v}"${String(w.expertScore||'')==v?' selected':''}>${v||'—'}</option>`).join('');
+  const srcOpts=[['GV','GV — Generell vurdering'],['IT','IT — Ingvild Tennfjord']].map(([v,l])=>`<option value="${v}"${w.expertSource===v?' selected':''}>${l}</option>`).join('');
+  const priceVal=w.price?Math.round(w.price):'';
+  const priceDate=w.priceDate?` <span style="font-size:10px;color:#bbb;">(${w.priceDate})</span>`:'';
+
+  const IS = 'font-size:12px;padding:5px 7px;border:1px solid #ddd;border-radius:6px;background:#fff;font-family:inherit;outline:none;width:100%;';
+  const IL = 'font-size:11px;color:#888;margin-bottom:2px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;';
+
+  // build body content — same layout for view and edit, fields swap between text and input
+  const bodyContent = editMode ? `
+    <div id="edit-dirty-banner" style="display:none;background:#FFF3DC;border:1px solid #f0d080;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#664400;font-weight:500;">⚠ Ulagrede endringer</div>
+    <div style="${IL}">Navn</div>
+    <input id="ed-name" value="${w.name}" style="${IS}margin-bottom:8px;font-size:14px;font-weight:600;"/>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div style="flex:1;"><div style="${IL}">Drue</div><input id="ed-grape" value="${w.grape}" style="${IS}"/></div>
+      <div style="flex:1;"><div style="${IL}">Region</div><input id="ed-region" value="${w.region}" style="${IS}"/></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div style="flex:1;"><div style="${IL}">Type</div><select id="ed-type" style="${IS}">${typeOpts}</select></div>
+      <div style="flex:1;"><div style="${IL}">Pris (kr)</div><input id="ed-price" type="number" value="${priceVal}" style="${IS}"/></div>
+    </div>
+    <div style="${IL}">Smak</div>
+    <input id="ed-taste" value="${w.taste}" style="${IS}margin-bottom:8px;"/>
+    <div style="${IL}">Passer til</div>
+    <input id="ed-food" value="${w.food}" style="${IS}margin-bottom:8px;"/>
+    <div style="${IL}">Beskrivelse</div>
+    <textarea id="ed-desc" rows="3" style="${IS}margin-bottom:8px;resize:vertical;">${w.desc}</textarea>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px;">
+      <div style="flex:1;"><div style="${IL}">Terningkast</div><select id="ed-score" style="${IS}">${scoreOpts}</select></div>
+      <div style="flex:1;"><div style="${IL}">Kilde</div><select id="ed-src" style="${IS}">${srcOpts}</select></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div style="flex:1;"><div style="${IL}">VMP-nr</div><input id="ed-vmpid" value="${w.vmpId||''}" style="${IS}"/></div>
+      <div style="flex:1;"><div style="${IL}">Vivino-hash</div><input id="ed-vivino" value="${w.vivinoHash||''}" style="${IS}"/></div>
+    </div>
+    ${w.localImg?`<div style="font-size:11px;color:#888;margin-bottom:8px;">📷 Egenlastet bilde. <button onclick="removeLocalImg(${w.id})" style="font-size:11px;color:#a32d2d;background:none;border:none;cursor:pointer;padding:0;">Fjern</button></div>`:''}
+    <div style="${IL}margin-top:4px;">Min vurdering (1–6 stjerner)</div>
+    <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
+    <div style="${IL}">Mitt notat</div>
+    <textarea class="tasting-note" id="modal-note" rows="3" placeholder="Skriv egne notater her..." style="${IS}resize:vertical;">${w.note||''}</textarea>
+    <div id="note-saved" style="min-height:14px;font-size:10px;color:#2d6a2d;margin-top:2px;"></div>
+  ` : `
+    ${st==='meh'?`<div style="background:#f0f0f0;border:1px solid #ddd;border-radius:7px;padding:8px 10px;font-size:11px;color:#999;margin-bottom:8px;display:flex;gap:7px;"><span>😶</span><span>Merket som Meh.</span></div>`:''}
+    <div class="modal-title">${w.name}</div>
+    <div class="modal-meta">${w.grape} · ${w.region} · ${typeLabel(w.type)}</div>
+    <div class="detail-grid">
+      <span class="dl">Pris:</span><span class="dv">${w.price?Math.round(w.price)+' kr'+priceDate:'—'}</span>
+      <span class="dl">Smak:</span><span class="dv">${w.taste}</span>
+      <span class="dl">Mat:</span><span class="dv">${w.food}</span>
+      ${w.expertScore?`<span class="dl">Kvalitet:</span><span class="dv" style="display:flex;align-items:center;gap:5px;">${diceSVG(w.expertScore,20)}<span style="font-size:10px;color:#999;font-weight:600;">${scoreTag(w)}</span></span>`:''}
+    </div>
+    ${w.vmpId?`<a href="https://www.vinmonopolet.no/p/${w.vmpId}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#1a56b0;text-decoration:underline;">Se på Vinmonopolet ↗</a>`:''}
+    <div class="desc-text">${w.desc}</div>
+    ${profileCirclesHTML(w,false)?`<div style="margin-top:10px;">${profileCirclesHTML(w,false)}</div>`:''}
+    ${w.note?`<div style="margin-top:8px;font-size:12px;color:#666;background:#f9f8f5;border-radius:7px;padding:8px 10px;border:1px solid #e5e5e5;"><span style="font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:3px;">Mitt notat</span>${w.note}</div>`:''}
+    ${w.rating?`<div style="margin-top:6px;display:flex;gap:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:18px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:''}
+  `;
+
+  const actionBtns = editMode ? `
+    <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${w.id})">Lagre</button>
+    <button class="action-btn" onclick="cancelEdit(${w.id})">Avbryt</button>
+  ` : `
+    ${harBtn}${bestillBtn}
+    <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
+    <button class="action-btn" style="margin-left:auto;" onclick="closeModal()">Lukk</button>
+  `;
+
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-img-area">
+        ${imgAreaHTML(w,260,true)}
+        <div class="modal-type-badge">${typeIcon(w.type,22)}</div>
+        ${imgBtns}
+      </div>
+      <div class="modal-body" id="modal-body-inner">
+        ${bodyContent}
+      </div>
+      <div class="modal-actions" id="modal-actions-inner">
+        ${actionBtns}
+      </div>
+    </div>
+  </div>`;
+
+  isDirty=false;
+  if(editMode){
+    originalNote=w.note||'';
+    originalRating=w.rating||0;
+    editRating=w.rating||0;
+    renderStars();
+    setTimeout(()=>{
+      document.querySelectorAll('#modal-body-inner input,#modal-body-inner select,#modal-body-inner textarea')
+        .forEach(el=>{
+          el.addEventListener('input',()=>markDirty());
+          el.addEventListener('change',()=>markDirty());
+        });
+    },0);
+  }
+}
+
+/* ── PHOTO FUNCTIONS ── */
+function triggerImgUpload(id){
+  document.getElementById('img-upload-'+id)?.click();
+}
+function handleImgUpload(event,id){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    // resize to max 800px width
+    const img=new Image();
+    img.onload=async()=>{
+      const MAX=800;
+      let w=img.width,h=img.height;
+      if(w>MAX){h=Math.round(h*(MAX/w));w=MAX;}
+      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const base64=canvas.toDataURL('image/jpeg',0.85);
+      const wine=wines.find(x=>x.id===id);if(!wine)return;
+      wine.localImg=base64;
+      await saveWine(wine);
+      renderModal(wine);
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function findPhoto(id){
+  const wine=wines.find(x=>x.id===id);if(!wine)return;
+  const q=encodeURIComponent(wine.name+' wine bottle');
+  window.open('https://www.vivino.com/search/wines?q='+q,'_blank');
+}
+
+/* ── EDIT MODE ── */
+function openEditMode(id){
+  const w=wines.find(x=>x.id===id);if(!w)return;
+  renderModal(w,true);
+}
+function cancelEdit(id){
+  isDirty=false;
+  const w=wines.find(x=>x.id===id);if(!w)return;
+  renderModal(w,false);
+}
+async function removeLocalImg(id){
+  const w=wines.find(x=>x.id===id);if(!w)return;
+  delete w.localImg;await saveWine(w);renderModal(w);
+}
+async function saveEdit(wineId){
+  const w=wines.find(x=>x.id===wineId);if(!w)return;
+  // Show "Lagrer..." feedback
+  const btn=document.getElementById('edit-save-btn');
+  if(btn){btn.textContent='Lagrer...';btn.className='action-btn';btn.disabled=true;}
+  // Use distinct name 'fv' (field value) to avoid shadowing wineId
+  const fv=fieldId=>document.getElementById(fieldId)?.value.trim();
+  const score=fv('ed-score');
+  const oldPrice=w.price;
+  // Use ?? '' so empty string is allowed (user can clear a field)
+  w.name     = fv('ed-name')   || w.name;
+  w.grape    = fv('ed-grape')  || w.grape;
+  w.region   = fv('ed-region') || w.region;
+  w.type     = fv('ed-type')   || w.type;
+  const newPrice=parseFloat(fv('ed-price'));
+  if(newPrice) w.price=newPrice;
+  w.taste    = fv('ed-taste')  || w.taste;
+  w.food     = fv('ed-food')   || w.food;
+  w.desc     = fv('ed-desc')   !== undefined ? (document.getElementById('ed-desc')?.value ?? w.desc) : w.desc;
+  w.expertScore  = score ? parseInt(score) : null;
+  w.expertSource = fv('ed-src') || 'GV';
+  const vmpNew=fv('ed-vmpid'); w.vmpId=vmpNew||null;
+  const vivRaw=fv('ed-vivino');
+  if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);w.vivinoHash=m?m[1]:vivRaw;}else w.vivinoHash=null;
+  // note: use raw value (not trimmed) to preserve whitespace in notes
+  w.note   = document.getElementById('modal-note')?.value ?? w.note;
+  w.rating = editRating;
+  // if price was manually edited, update priceUpdatedAt
+  if(newPrice && newPrice!==oldPrice) w.priceUpdatedAt=Date.now();
+  isDirty=false;
+  await saveWine(w);
+  doCloseModal();
+}
+
+/* ── WINE STATUS TOGGLE ── */
+async function toggleWineStatus(id, status){
+  const w=wines.find(x=>x.id===id);if(!w)return;
+  if(w.status===status){
+    w.status=null; // toggle off
+  } else {
+    w.status=status;
+  }
+  await saveWine(w);
+  renderModal(w, document.getElementById('edit-save-btn')!==null);
+}
+
+/* ── STARS ── */
+function setRating(r){editRating=(r===editRating)?0:r;renderStars();markDirty();}
+function renderStars(){
+  let s='';
+  for(let i=1;i<=6;i++) s+=`<span class="star6${i<=editRating?' lit':''}" onclick="setRating(${i})" title="${i===editRating?'Klikk for å fjerne':'Sett '+i+' stjerner'}">★</span>`;
+  const el=document.getElementById('modal-stars');if(el)el.innerHTML=s;
+}
+
+/* ── DIRTY DETECTION ── */
+function markDirty(){
+  const note=document.getElementById('modal-note')?.value||'';
+  const nameEl=document.getElementById('ed-name');
+  if(!nameEl) return; // not in edit mode
+  isDirty=true;
+  const btn=document.getElementById('edit-save-btn');
+  if(btn&&!btn.disabled) btn.className='action-btn green dirty';
+  updateLiveStatus();
+}
+function updateLiveStatus(){
+  const note=document.getElementById('modal-note')?.value||'';
+  const tasted=!!(editRating||(note&&note.trim()));
+  // update boring/pending buttons visibility live
+  const boringBtn=document.querySelector('.action-btn.amber');
+  const pendingBtn=document.querySelector('[onclick*="pending"]');
+  if(tasted){
+    if(boringBtn) boringBtn.style.display='none';
+    if(pendingBtn&&pendingBtn.textContent.includes('Ikke smakt')) pendingBtn.style.display='none';
+  } else {
+    if(boringBtn) boringBtn.style.display='';
+    if(pendingBtn&&pendingBtn.textContent.includes('Ikke smakt')) pendingBtn.style.display='';
+  }
+}
+
+/* ── SAVE NOTE / STATUS ── */
+async function saveNote(id){
+  const w=wines.find(x=>x.id===id);if(!w)return;
+  w.note=document.getElementById('modal-note').value;
+  w.rating=editRating;
+  // if now tasted and was pending → promote to 'all'
+  if(hasTasted(w)&&w.status==='pending') w.status='all';
+  await saveWine(w);
+  isDirty=false;
+  originalNote=w.note;
+  originalRating=w.rating;
+  const btn=document.getElementById('save-note-btn');
+  if(btn) btn.className='action-btn';
+  document.getElementById('note-saved').innerHTML='<span class="note-saved">✓ Lagret</span>';
+  // re-render to update status badges/buttons
+  renderModal(w);
+}
+// setStatus kept for compatibility
+async function setStatus(id,status){
+  await toggleWineStatus(id,status);
+}
+
+/* ── MODAL CLOSE ── */
+function doCloseModal(){
+  document.getElementById('modal-container').innerHTML='';
+  selectedId=null; isDirty=false;
+}
+function confirmClose(callback){
+  if(!isDirty){callback();return;}
+  // show inline confirm inside modal-actions
+  const actions=document.querySelector('.modal-actions');
+  if(!actions){callback();return;}
+  // remove any existing confirm
+  const existing=document.getElementById('close-confirm');
+  if(existing){existing.remove();return;}
+  // Insert confirm banner at TOP of modal body, not bottom
+  const modalBody=document.querySelector('.modal-body');
+  const targetContainer=modalBody||actions;
+  const div=document.createElement('div');
+  div.id='close-confirm';
+  div.style.cssText='background:#FFF3DC;border:1px solid #f0d080;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+  div.innerHTML=`<span style="font-size:12px;color:#664400;flex:1;font-weight:500;">⚠ Ulagrede endringer</span>
+    <button class="action-btn green" onclick="confirmSaveClose()">Ja, lagre</button>
+    <button class="action-btn red" onclick="doCloseModal()">Nei, forkast</button>`;
+  if(modalBody) modalBody.insertBefore(div, modalBody.firstChild);
+  else actions.appendChild(div);
+}
+async function confirmSaveClose(){
+  if(selectedId){
+    const nameEl=document.getElementById('ed-name');
+    if(nameEl) await saveEdit(selectedId); // in edit mode — saveEdit auto-closes
+    else doCloseModal();
+  } else doCloseModal();
+}
+function closeModal(e){
+  if(!e||e.target.id==='modal-overlay') confirmClose(doCloseModal);
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(document.getElementById('lightbox-container').innerHTML) closeLightbox();
+    else if(selectedId!==null) confirmClose(doCloseModal);
+  }
+});
+
+/* ── MANUAL ADD ── */
+let vmpSearchTimer=null;
+
+function toggleManualForm(){
+  showManual=!showManual;
+  const c=document.getElementById('add-form-container');
+  if(!showManual){c.style.display='none';c.innerHTML='';return;}
+  c.style.display='block';
+  c.innerHTML=`<div class="add-form">
+    <h3>Legg til vin</h3>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Søk på Vinmonopolet</div>
+      <div style="display:flex;gap:7px;">
+        <input id="nw-search" placeholder="Søk etter vinnavn..." style="flex:1;font-size:13px;padding:7px 11px;border:1px solid #ddd;border-radius:8px;outline:none;"
+          oninput="scheduleVmpSearch()" onkeydown="if(event.key==='Escape'){document.getElementById('nw-search').value='';document.getElementById('nw-search-results').innerHTML='';}" />
+      </div>
+      <div id="nw-search-results" style="margin-top:6px;border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;display:none;"></div>
+    </div>
+    <div style="border-top:1px solid #f0f0f0;padding-top:10px;">
+      <div style="font-size:10px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Detaljer <span id="nw-autofill-badge" style="display:none;background:#DFF0D8;color:#2d6a2d;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;">Autofylt</span></div>
+      <div class="form-row"><input id="nw-name" placeholder="Navn *"/><input id="nw-grape" placeholder="Drue(r)"/></div>
+      <div class="form-row"><input id="nw-region" placeholder="Region / Land"/>
+        <select id="nw-type"><option value="red">Rødvin</option><option value="white">Hvitvin</option><option value="rose">Rosévin</option><option value="other">Andre</option></select>
+      </div>
+      <div class="form-row"><input id="nw-price" type="number" placeholder="Pris (kr)"/><input id="nw-vmpid" placeholder="VMP-nr"/></div>
+      <div class="form-row"><input id="nw-vivino" placeholder="Vivino-hash (for bilde)"/></div>
+      <div class="form-row"><input id="nw-taste" placeholder="Smak"/><input id="nw-food" placeholder="Passer til"/></div>
+      <div class="form-row"><textarea id="nw-desc" placeholder="Beskrivelse" rows="2"></textarea></div>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+        <label style="font-size:11px;color:#888;">Terningkast:</label>
+        <select id="nw-score" style="font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+        <select id="nw-source" style="font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;"><option value="GV">GV</option><option value="IT">IT — Ingvild Tennfjord</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:7px;">
+      <button class="action-btn green" onclick="addManualWine()">+ Legg til</button>
+      <button class="action-btn" onclick="toggleManualForm()">Avbryt</button>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById('nw-search')?.focus(),50);
+}
+
+function scheduleVmpSearch(){
+  clearTimeout(vmpSearchTimer);
+  const q=document.getElementById('nw-search')?.value.trim();
+  const box=document.getElementById('nw-search-results');
+  if(!q||q.length<2){if(box)box.style.display='none';return;}
+  vmpSearchTimer=setTimeout(()=>doVmpSearch(q),400);
+}
+
+async function doVmpSearch(q){
+  const box=document.getElementById('nw-search-results');
+  if(!box)return;
+  box.style.display='block';
+  box.innerHTML='<div style="padding:10px;font-size:12px;color:#888;">Søker...</div>';
+  try{
+    const vmpUrl=`https://www.vinmonopolet.no/vmpws/v2/vmp/products/search?fields=FULL&pageSize=12&currentPage=0&q=${encodeURIComponent(q)}`;
+    const proxyUrl=`${VMP_PROXY}?url=${encodeURIComponent(vmpUrl)}`;
+    const res=await fetch(proxyUrl);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const products=data.productList?.results||data.products||[];
+    if(!products.length){box.innerHTML='<div style="padding:10px;font-size:12px;color:#888;">Ingen viner funnet</div>';return;}
+    box.innerHTML=products.map(p=>{
+      const pid=p.code||'';
+      const name=p.name||'Ukjent';
+      const price=p.price?.value?Math.round(p.price.value)+' kr':'—';
+      const country=p.main_country?.name||p.mainCountry?.name||'';
+      const grape=(p.grapes||[]).map(g=>g.name).join('/');
+      const img=pid?`${VMP_IMG}${pid}-1.jpg`:'';
+      return `<div onclick="fillFromVmp(${JSON.stringify({pid,name,price:p.price?.value,country,grape,
+        taste:(p.content?.characteristics||[]).map(x=>x.name).join(', '),
+        food:(p.content?.isGoodFor||[]).map(x=>x.name).join(', '),
+        desc:p.content?.freshness||'',
+        type:p.main_category?.name||''
+      }).replace(/"/g,'&quot;')})"
+        style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:background .1s;"
+        onmouseover="this.style.background='#f9f8f5'" onmouseout="this.style.background=''">
+        ${img?`<img src="${img}" style="width:32px;height:44px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'"/>`:'<div style="width:32px;flex-shrink:0;"></div>'}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;line-height:1.3;">${name}</div>
+          <div style="font-size:10px;color:#888;">${grape||country||''}</div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;">${price}</div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML=`<div style="padding:10px;font-size:12px;color:#a32d2d;">Søk feilet: ${e.message}</div>`;
+  }
+}
+
+function fillFromVmp(p){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+  set('nw-name',  p.name);
+  set('nw-grape', p.grape);
+  set('nw-region',p.country);
+  set('nw-vmpid', p.pid);
+  set('nw-taste', p.taste);
+  set('nw-food',  p.food);
+  if(p.price) set('nw-price', Math.round(p.price));
+  // Set type
+  const typeEl=document.getElementById('nw-type');
+  if(typeEl&&p.type){
+    const tl=p.type.toLowerCase();
+    if(tl.includes('hvit')||tl.includes('white')) typeEl.value='white';
+    else if(tl.includes('ros')) typeEl.value='rose';
+    else if(tl.includes('rød')||tl.includes('red')) typeEl.value='red';
+  }
+  // Hide results, show autofill badge, clear search
+  const box=document.getElementById('nw-search-results');
+  if(box) box.style.display='none';
+  const badge=document.getElementById('nw-autofill-badge');
+  if(badge) badge.style.display='inline';
+  document.getElementById('nw-search').value=p.name;
+}
+
+async function addManualWine(){
+  const name=document.getElementById('nw-name').value.trim();if(!name){alert('Navn er påkrevd.');return;}
+  const vivRaw=document.getElementById('nw-vivino').value.trim();let vivinoHash=null;
+  if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);vivinoHash=m?m[1]:vivRaw;}
+  const score=document.getElementById('nw-score').value;
+  const newWine={id:nextId(),name,grape:document.getElementById('nw-grape').value.trim()||'—',region:document.getElementById('nw-region').value.trim()||'—',type:document.getElementById('nw-type').value,price:parseFloat(document.getElementById('nw-price').value)||null,priceDate:nowLabel(),vmpId:document.getElementById('nw-vmpid').value.trim()||null,vivinoHash,status:null,taste:document.getElementById('nw-taste').value.trim()||'—',food:document.getElementById('nw-food').value.trim()||'—',expertScore:score?parseInt(score):null,expertSource:document.getElementById('nw-source').value,desc:document.getElementById('nw-desc').value.trim()||'',note:'',rating:0,updatedAt:Date.now()};
+  showManual=false;document.getElementById('add-form-container').style.display='none';document.getElementById('add-form-container').innerHTML='';
+  await saveWine(newWine);
+}
+
+/* ── BOOT ── */
+async function bootApp(){
+  loadLocal();
+  if(wines.length===0){wines=defaultWines.map(w=>({...w}));ensureOrder();saveLocal();}
+  else ensureOrder();
+  render();setSyncBadge('wait','⟳ Syncer...');
+  if(navigator.onLine)await syncWithCloud();else setSyncBadge('wait','⏳ Offline — bruker lokal kopi');
+}
+async function init(){
+  if(!isConfigured())showSetupScreen();else{hideSetupScreen();await bootApp();}
+}
+init();
+</script>
+</body>
+</html>
