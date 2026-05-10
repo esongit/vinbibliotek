@@ -1181,10 +1181,13 @@ async function selectVmpProduct(pid, searchData){
 
       // Profile values (1-12 scale)
       const bc=p.basiccharacteristics||{};
+      console.log('VMP details raw:', JSON.stringify(p).substring(0,1000));
+      console.log('basiccharacteristics:', JSON.stringify(bc));
       const fylde    = bc.fullness    ??bc.fylde    ??null;
       const friskhet = bc.freshness   ??bc.friskhet ??null;
       const sodme    = bc.sweetness   ??bc.sodme    ??null;
       const garve    = bc.bitterness  ??bc.tannins  ??bc.garvestoff??null;
+      console.log('Profile values:', {fylde,friskhet,sodme,garve});
 
       window._vmpProfile={fylde,friskhet,sodme,garve};
 
