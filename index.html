@@ -773,6 +773,7 @@ function renderModal(w, editMode=false){
   const actionBtns = editMode ? `
     <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${w.id})">Lagre</button>
     <button class="action-btn" onclick="cancelEdit(${w.id})">Avbryt</button>
+    <button class="action-btn red" style="margin-left:auto;" onclick="confirmDelete(${w.id})">🗑 Slett vin</button>
   ` : `
     ${harBtn}${bestillBtn}
     <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
@@ -961,35 +962,69 @@ async function setStatus(id,status){
 /* ── MODAL CLOSE ── */
 function doCloseModal(){
   document.getElementById('modal-container').innerHTML='';
+  const cc=document.getElementById('close-confirm');if(cc)cc.remove();
+  const dc=document.getElementById('delete-confirm');if(dc)dc.remove();
   selectedId=null; isDirty=false;
+}
+
+async function deleteWine(id){
+  wines=wines.filter(w=>w.id!==id);
+  customOrder=customOrder.filter(x=>x!==id);
+  saveLocal();
+  doCloseModal();
+  render();
+  if(navigator.onLine){
+    setSyncBadge('wait','⟳ Lagrer...');
+    try{ await pushCloud(); setSyncBadge('ok','✓ Synkronisert'); }
+    catch(e){ setSyncBadge('err','⚠ Offline'); }
+  }
+}
+
+function confirmDelete(id){
+  const existing=document.getElementById('delete-confirm');
+  if(existing){existing.remove();return;}
+  const overlay=document.createElement('div');
+  overlay.id='delete-confirm';
+  overlay.style.cssText='position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,0.3);';
+  overlay.innerHTML=`
+    <div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.22);padding:1.5rem;max-width:300px;width:100%;text-align:center;">
+      <div style="font-size:24px;margin-bottom:8px;">🗑️</div>
+      <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:6px;">Slett vin?</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px;">Dette kan ikke angres. Vinen slettes permanent fra alle enheter.</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button class="action-btn red" style="font-size:13px;padding:9px 20px;" onclick="deleteWine(${id})">Ja, slett</button>
+        <button class="action-btn" style="font-size:13px;padding:9px 20px;" onclick="document.getElementById('delete-confirm').remove()">Nei, avbryt</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  // ESC closes confirm
+  overlay._escHandler=e=>{if(e.key==='Escape'){overlay.remove();document.removeEventListener('keydown',overlay._escHandler);}};
+  document.addEventListener('keydown',overlay._escHandler);
 }
 function confirmClose(callback){
   if(!isDirty){callback();return;}
-  // show inline confirm inside modal-actions
-  const actions=document.querySelector('.modal-actions');
-  if(!actions){callback();return;}
-  // remove any existing confirm
   const existing=document.getElementById('close-confirm');
-  if(existing){existing.remove();return;}
-  // Insert confirm banner at TOP of modal body, not bottom
-  const modalBody=document.querySelector('.modal-body');
-  const targetContainer=modalBody||actions;
-  const div=document.createElement('div');
-  div.id='close-confirm';
-  div.style.cssText='background:#FFF3DC;border:1px solid #f0d080;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
-  div.innerHTML=`<span style="font-size:12px;color:#664400;flex:1;font-weight:500;">⚠ Ulagrede endringer</span>
-    <button class="action-btn green" onclick="confirmSaveClose()">Ja, lagre</button>
-    <button class="action-btn red" onclick="doCloseModal()">Nei, forkast</button>`;
-  if(modalBody) modalBody.insertBefore(div, modalBody.firstChild);
-  else actions.appendChild(div);
+  if(existing){existing.remove();isDirty=false;callback();return;}
+  const overlay=document.createElement('div');
+  overlay.id='close-confirm';
+  overlay.style.cssText='position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,0.3);';
+  overlay.innerHTML=`
+    <div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.22);padding:1.5rem;max-width:300px;width:100%;text-align:center;">
+      <div style="font-size:24px;margin-bottom:8px;">⚠️</div>
+      <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:6px;">Ulagrede endringer</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px;">Vil du lagre endringene før du lukker?</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button class="action-btn green" style="font-size:13px;padding:9px 20px;" onclick="confirmSaveClose()">Ja, lagre</button>
+        <button class="action-btn red" style="font-size:13px;padding:9px 20px;" onclick="dismissConfirmClose()">Nei, forkast</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
 }
-async function confirmSaveClose(){
-  if(selectedId){
-    const nameEl=document.getElementById('ed-name');
-    if(nameEl) await saveEdit(selectedId); // in edit mode — saveEdit auto-closes
-    else doCloseModal();
-  } else doCloseModal();
+function dismissConfirmClose(){
+  const el=document.getElementById('close-confirm');if(el)el.remove();
+  isDirty=false;doCloseModal();
 }
+
 function closeModal(e){
   if(!e||e.target.id==='modal-overlay') confirmClose(doCloseModal);
 }
@@ -1082,7 +1117,18 @@ async function doVmpSearch(q){
       const country=p.main_country?.name||p.mainCountry?.name||'';
       const grape=(p.grapes||[]).map(g=>g.name).join('/');
       const img=pid?`${VMP_IMG}${pid}-1.jpg`:'';
-      return `<div onclick="selectVmpProduct('${pid}')"
+      // Extract all available fields from search result
+      const bc=p.basiccharacteristics||{};
+      const food=(p.readySteadyDrink||p.isGoodFor||p.content?.isGoodFor||[]).map(f=>f.name||f).join(', ');
+      const fylde    = bc.fullness    ??bc.fylde    ??p.fullness    ??null;
+      const friskhet = bc.freshness   ??bc.friskhet ??p.freshness   ??null;
+      const sodme    = bc.sweetness   ??bc.sodme    ??p.sweetness   ??null;
+      const garve    = bc.bitterness  ??bc.tannins  ??bc.garvestoff ??null;
+      const type     = vmpTypeToLocal(p.main_category?.name||p.mainCategory?.name||'');
+      const region   = [p.district?.name,country].filter(Boolean).join(', ')||country;
+      const searchData={name,grape,region,price:p.price?.value,food,type,fylde,friskhet,sodme,garve};
+      const sdJson=JSON.stringify(searchData).replace(/"/g,'&quot;');
+      return `<div onclick="selectVmpProduct('${pid}',JSON.parse(this.dataset.sd))" data-sd="${sdJson}"
         style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:background .1s;"
         onmouseover="this.style.background='#f9f8f5'" onmouseout="this.style.background=''">
         ${img?`<img src="${img}" style="width:32px;height:44px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'"/>`:'<div style="width:32px;flex-shrink:0;"></div>'}
@@ -1098,71 +1144,46 @@ async function doVmpSearch(q){
   }
 }
 
-async function selectVmpProduct(pid){
+async function selectVmpProduct(pid, searchData){
+  // Use data already fetched from search-API — no extra API call needed
   const box=document.getElementById('nw-search-results');
-  if(box) box.innerHTML='<div style="padding:10px;font-size:12px;color:#888;">⏳ Henter detaljer...</div>';
+  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};
 
-  try{
-    // Fetch full details from details API — has all fields incl. basiccharacteristics
-    const data=await vmpFetch(`https://apis.vinmonopolet.no/products/v0/details-normal?productId=${pid}&maxResults=1`);
-    const p=Array.isArray(data)?data[0]:data;
-    if(!p) throw new Error('Ingen data');
+  set('nw-name',   searchData.name);
+  set('nw-grape',  searchData.grape);
+  set('nw-region', searchData.region);
+  set('nw-vmpid',  pid);
+  set('nw-food',   searchData.food);
+  if(searchData.price) set('nw-price', Math.round(searchData.price));
 
-    const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};
+  const typeEl=document.getElementById('nw-type');
+  if(typeEl) typeEl.value=searchData.type||'red';
 
-    const name   = p.basic?.productShortName||'';
-    const grape  = (p.ingredients?.grapes||[]).map(g=>g.name).join('/');
-    const country= p.origins?.origin?.[0]?.country||'';
-    const district=p.origins?.origin?.[0]?.district||'';
-    const region = [district,country].filter(Boolean).join(', ');
-    const price  = p.price?parseFloat(p.price):null;
-    const taste  = (p.characteristics||[]).map(c=>c.name).join(', ');
-    const food   = (p.food||[]).map(f=>f.name).join(', ');
-    const desc   = p.description?.characteristicDescription||'';
-    const type   = vmpTypeToLocal(p.basic?.mainSubCategoryCode||'');
+  // Store profile values for addManualWine
+  window._vmpProfile={
+    fylde:    searchData.fylde,
+    friskhet: searchData.friskhet,
+    sodme:    searchData.sodme,
+    garve:    searchData.garve,
+  };
 
-    // Basic characteristics (1-12 scale)
-    const bc   = p.basiccharacteristics||{};
-    const fylde    = bc.fullness    ?? bc.fylde    ?? null;
-    const friskhet = bc.freshness   ?? bc.friskhet ?? null;
-    const sodme    = bc.sweetness   ?? bc.sodme    ?? null;
-    const garve    = bc.bitterness  ?? bc.garvestoff ?? null;
+  if(box) box.style.display='none';
+  const badge=document.getElementById('nw-autofill-badge');
+  if(badge) badge.style.display='inline';
+  const searchEl=document.getElementById('nw-search');
+  if(searchEl) searchEl.value=searchData.name;
 
-    set('nw-name',   name);
-    set('nw-grape',  grape);
-    set('nw-region', region);
-    set('nw-vmpid',  pid);
-    set('nw-taste',  taste);
-    set('nw-food',   food);
-    set('nw-desc',   desc);
-    if(price) set('nw-price', Math.round(price));
-
-    const typeEl=document.getElementById('nw-type');
-    if(typeEl) typeEl.value=type;
-
-    // Store profile values for use in addManualWine
-    window._vmpProfile={fylde,friskhet,sodme,garve};
-
-    if(box) box.style.display='none';
-    const badge=document.getElementById('nw-autofill-badge');
-    if(badge) badge.style.display='inline';
-    document.getElementById('nw-search').value=name;
-
-    // Show profile preview if any values found
-    if(fylde||friskhet||sodme||garve){
-      const profPreview=document.getElementById('nw-prof-preview');
-      if(profPreview){
-        const vals=[
-          fylde    ?`FYL ${fylde}/12`:'',
-          friskhet ?`FRI ${friskhet}/12`:'',
-          (sodme&&type!=='red')  ?`SØD ${sodme}/12`:'',
-          (garve&&type==='red')  ?`GAR ${garve}/12`:'',
-        ].filter(Boolean).join(' · ');
-        profPreview.textContent=vals?'Profil: '+vals:'';
-      }
-    }
-  }catch(e){
-    if(box) box.innerHTML=`<div style="padding:10px;font-size:12px;color:#a32d2d;">Feil: ${e.message}</div>`;
+  // Show profile preview
+  const profPreview=document.getElementById('nw-prof-preview');
+  if(profPreview){
+    const vals=[
+      searchData.fylde    !=null?`FYL ${searchData.fylde}/12`:'',
+      searchData.friskhet !=null?`FRI ${searchData.friskhet}/12`:'',
+      searchData.sodme    !=null&&searchData.type!=='red'?`SØD ${searchData.sodme}/12`:'',
+      searchData.garve    !=null&&searchData.type==='red'?`GAR ${searchData.garve}/12`:'',
+    ].filter(Boolean).join(' · ');
+    profPreview.textContent=vals?'✓ Profil: '+vals:'';
+    profPreview.style.color='#2d6a2d';
   }
 }
 
