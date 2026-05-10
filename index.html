@@ -1169,7 +1169,10 @@ async function selectVmpProduct(pid, searchData){
   // Fetch full details from details-API via Worker (now has subscription key)
   try{
     const detailUrl=`https://apis.vinmonopolet.no/products/v0/details-normal?productId=${pid}&maxResults=1`;
+    console.log('Fetching details for pid:', pid);
+    console.log('Detail URL via proxy:', `${VMP_PROXY}?url=${encodeURIComponent(detailUrl)}`);
     const data=await vmpFetch(detailUrl);
+    console.log('Details response:', JSON.stringify(data).substring(0,500));
     const p=Array.isArray(data)?data[0]:data;
 
     if(p){
@@ -1205,8 +1208,8 @@ async function selectVmpProduct(pid, searchData){
     }
   }catch(e){
     window._vmpProfile={};
-    if(profPreview){ profPreview.textContent='⚠ Profildata ikke tilgjengelig'; profPreview.style.color='#996600'; }
-    console.warn('Details fetch failed:', e.message);
+    if(profPreview){ profPreview.textContent='⚠ Feil: '+e.message; profPreview.style.color='#a32d2d'; }
+    console.error('Details fetch failed:', e.message, e);
   }
 }
 
