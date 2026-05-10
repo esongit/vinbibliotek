@@ -223,6 +223,7 @@ const LS_KEY     = 'vinbibliotek_wines_v2';
 const LS_SETUP   = 'vinbibliotek_setup_v1';
 const LS_ORDER   = 'vinbibliotek_order_v1'; // custom sort order
 const VMP_IMG    = 'https://bilder.vinmonopolet.no/cache/300x300-0/';
+const VMP_PROXY  = 'https://vinmonopol-proxy.esandal.workers.dev/';
 const VIV_IMG    = 'https://images.vivino.com/thumbs/';
 
 function getConfig(){try{return JSON.parse(localStorage.getItem(LS_SETUP))||{};}catch(e){return {};}}
@@ -1000,34 +1001,121 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ── MANUAL ADD ── */
+let vmpSearchTimer=null;
+
 function toggleManualForm(){
   showManual=!showManual;
   const c=document.getElementById('add-form-container');
   if(!showManual){c.style.display='none';c.innerHTML='';return;}
   c.style.display='block';
-  c.innerHTML=`<div class="add-form"><h3>Legg til vin manuelt</h3>
-    <div class="form-row"><input id="nw-name" placeholder="Navn *"/><input id="nw-grape" placeholder="Drue(r)"/></div>
-    <div class="form-row"><input id="nw-region" placeholder="Region / Land"/>
-      <select id="nw-type"><option value="red">Rødvin</option><option value="white">Hvitvin</option><option value="rose">Rosévin</option><option value="other">Andre</option></select>
+  c.innerHTML=`<div class="add-form">
+    <h3>Legg til vin</h3>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Søk på Vinmonopolet</div>
+      <div style="display:flex;gap:7px;">
+        <input id="nw-search" placeholder="Søk etter vinnavn..." style="flex:1;font-size:13px;padding:7px 11px;border:1px solid #ddd;border-radius:8px;outline:none;"
+          oninput="scheduleVmpSearch()" onkeydown="if(event.key==='Escape'){document.getElementById('nw-search').value='';document.getElementById('nw-search-results').innerHTML='';}" />
+      </div>
+      <div id="nw-search-results" style="margin-top:6px;border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;display:none;"></div>
     </div>
-    <div class="form-row"><input id="nw-price" type="number" placeholder="Pris (kr)"/><input id="nw-vmpid" placeholder="VMP-nr (for bilde)"/></div>
-    <div class="form-row"><input id="nw-vivino" placeholder="Vivino-hash (for bilde)"/></div>
-    <div class="form-row"><input id="nw-taste" placeholder="Smak"/><input id="nw-food" placeholder="Passer til"/></div>
-    <div class="form-row"><textarea id="nw-desc" placeholder="Beskrivelse" rows="2"></textarea></div>
-    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-      <label style="font-size:11px;color:#888;">Terningkast:</label>
-      <select id="nw-score" style="font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
-      <select id="nw-source" style="font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;"><option value="GV">GV</option><option value="IT">IT — Ingvild Tennfjord</option></select>
-    </div>
-    <div style="background:#f0f4ff;border-radius:7px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#555;line-height:1.6;">
-      💡 VMP-nr fra URL på vinmonopolet.no (f.eks. <code>/p/16349201</code>). Alternativt Vivino-hash. Vil du ha fullstendig data automatisk? Send varenummeret til meg i chatten.
+    <div style="border-top:1px solid #f0f0f0;padding-top:10px;">
+      <div style="font-size:10px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Detaljer <span id="nw-autofill-badge" style="display:none;background:#DFF0D8;color:#2d6a2d;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;">Autofylt</span></div>
+      <div class="form-row"><input id="nw-name" placeholder="Navn *"/><input id="nw-grape" placeholder="Drue(r)"/></div>
+      <div class="form-row"><input id="nw-region" placeholder="Region / Land"/>
+        <select id="nw-type"><option value="red">Rødvin</option><option value="white">Hvitvin</option><option value="rose">Rosévin</option><option value="other">Andre</option></select>
+      </div>
+      <div class="form-row"><input id="nw-price" type="number" placeholder="Pris (kr)"/><input id="nw-vmpid" placeholder="VMP-nr"/></div>
+      <div class="form-row"><input id="nw-vivino" placeholder="Vivino-hash (for bilde)"/></div>
+      <div class="form-row"><input id="nw-taste" placeholder="Smak"/><input id="nw-food" placeholder="Passer til"/></div>
+      <div class="form-row"><textarea id="nw-desc" placeholder="Beskrivelse" rows="2"></textarea></div>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+        <label style="font-size:11px;color:#888;">Terningkast:</label>
+        <select id="nw-score" style="font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+        <select id="nw-source" style="font-size:11px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;"><option value="GV">GV</option><option value="IT">IT — Ingvild Tennfjord</option></select>
+      </div>
     </div>
     <div style="display:flex;gap:7px;">
       <button class="action-btn green" onclick="addManualWine()">+ Legg til</button>
       <button class="action-btn" onclick="toggleManualForm()">Avbryt</button>
     </div>
   </div>`;
+  setTimeout(()=>document.getElementById('nw-search')?.focus(),50);
 }
+
+function scheduleVmpSearch(){
+  clearTimeout(vmpSearchTimer);
+  const q=document.getElementById('nw-search')?.value.trim();
+  const box=document.getElementById('nw-search-results');
+  if(!q||q.length<2){if(box)box.style.display='none';return;}
+  vmpSearchTimer=setTimeout(()=>doVmpSearch(q),400);
+}
+
+async function doVmpSearch(q){
+  const box=document.getElementById('nw-search-results');
+  if(!box)return;
+  box.style.display='block';
+  box.innerHTML='<div style="padding:10px;font-size:12px;color:#888;">Søker...</div>';
+  try{
+    const vmpUrl=`https://www.vinmonopolet.no/vmpws/v2/vmp/products/search?fields=FULL&pageSize=12&currentPage=0&q=${encodeURIComponent(q)}`;
+    const proxyUrl=`${VMP_PROXY}?url=${encodeURIComponent(vmpUrl)}`;
+    const res=await fetch(proxyUrl);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const products=data.productList?.results||data.products||[];
+    if(!products.length){box.innerHTML='<div style="padding:10px;font-size:12px;color:#888;">Ingen viner funnet</div>';return;}
+    box.innerHTML=products.map(p=>{
+      const pid=p.code||'';
+      const name=p.name||'Ukjent';
+      const price=p.price?.value?Math.round(p.price.value)+' kr':'—';
+      const country=p.main_country?.name||p.mainCountry?.name||'';
+      const grape=(p.grapes||[]).map(g=>g.name).join('/');
+      const img=pid?`${VMP_IMG}${pid}-1.jpg`:'';
+      return `<div onclick="fillFromVmp(${JSON.stringify({pid,name,price:p.price?.value,country,grape,
+        taste:(p.content?.characteristics||[]).map(x=>x.name).join(', '),
+        food:(p.content?.isGoodFor||[]).map(x=>x.name).join(', '),
+        desc:p.content?.freshness||'',
+        type:p.main_category?.name||''
+      }).replace(/"/g,'&quot;')})"
+        style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:background .1s;"
+        onmouseover="this.style.background='#f9f8f5'" onmouseout="this.style.background=''">
+        ${img?`<img src="${img}" style="width:32px;height:44px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'"/>`:'<div style="width:32px;flex-shrink:0;"></div>'}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;line-height:1.3;">${name}</div>
+          <div style="font-size:10px;color:#888;">${grape||country||''}</div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;">${price}</div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML=`<div style="padding:10px;font-size:12px;color:#a32d2d;">Søk feilet: ${e.message}</div>`;
+  }
+}
+
+function fillFromVmp(p){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+  set('nw-name',  p.name);
+  set('nw-grape', p.grape);
+  set('nw-region',p.country);
+  set('nw-vmpid', p.pid);
+  set('nw-taste', p.taste);
+  set('nw-food',  p.food);
+  if(p.price) set('nw-price', Math.round(p.price));
+  // Set type
+  const typeEl=document.getElementById('nw-type');
+  if(typeEl&&p.type){
+    const tl=p.type.toLowerCase();
+    if(tl.includes('hvit')||tl.includes('white')) typeEl.value='white';
+    else if(tl.includes('ros')) typeEl.value='rose';
+    else if(tl.includes('rød')||tl.includes('red')) typeEl.value='red';
+  }
+  // Hide results, show autofill badge, clear search
+  const box=document.getElementById('nw-search-results');
+  if(box) box.style.display='none';
+  const badge=document.getElementById('nw-autofill-badge');
+  if(badge) badge.style.display='inline';
+  document.getElementById('nw-search').value=p.name;
+}
+
 async function addManualWine(){
   const name=document.getElementById('nw-name').value.trim();if(!name){alert('Navn er påkrevd.');return;}
   const vivRaw=document.getElementById('nw-vivino').value.trim();let vivinoHash=null;
