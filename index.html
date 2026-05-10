@@ -1159,11 +1159,8 @@ function facetToInt(code){
 
 // Parse profile values from facets array for a specific product code
 function profileFromFacets(facets, pid){
-  const result={fylde:null,friskhet:null,sodme:null,garve:null};
+  const result={fylde:null,friskhet:null,sodme:null,garve:null,food:null};
   if(!facets||!pid) return result;
-  // For each profile facet, find which bucket our product falls in
-  // by doing a targeted search — facets tell us distribution across results
-  // When we search by pid alone, facets reflect only that product's values
   const map={
     'Fylde':            'fylde',
     'Friskhet':         'friskhet',
@@ -1171,10 +1168,16 @@ function profileFromFacets(facets, pid){
     'Tannin(Sulfates)': 'garve',
   };
   facets.forEach(f=>{
+    // Profile values
     const key=map[f.code];
-    if(!key) return;
-    const selected=(f.values||[]).find(v=>v.selected)||(f.values||[])[0];
-    if(selected) result[key]=facetToInt(selected.code);
+    if(key){
+      const selected=(f.values||[]).find(v=>v.selected)||(f.values||[])[0];
+      if(selected) result[key]=facetToInt(selected.code);
+    }
+    // Food/mat from isGoodfor facet
+    if(f.code==='isGoodfor'){
+      result.food=(f.values||[]).map(v=>v.name).join(', ');
+    }
   });
   return result;
 }
@@ -1214,23 +1217,25 @@ async function selectVmpProduct(pid, searchData){
     // Extract profile from facets
     const prof = profileFromFacets(data.facets||[], pid);
 
-    // Scrape product page for smak, mat, beskrivelse via Worker
+    // Fill food from facets (already parsed)
+    const set2=(id,v)=>{const el=document.getElementById(id);if(el&&v&&!el.value)el.value=v.trim();};
+    if(prof.food) set2('nw-food', prof.food);
+
+    // Scrape product page HTML for smak and beskrivelse
     if(prodUrl){
       try{
         const pageRes = await fetch(`${VMP_PROXY}?url=${encodeURIComponent(prodUrl)}`);
         if(pageRes.ok){
           const html = await pageRes.text();
-          // Parse smak from "Smak[text]" pattern in HTML
-          const smakMatch = html.match(/SmakSmak[^<]*<\/dt>\s*<dd[^>]*>([^<]+)/i)
-            || html.match(/class="[^"]*smell[^"]*"[^>]*>([^<]+)/i)
-            || html.match(/"Smak"[^:]*:\s*"([^"]+)"/i);
-          // Better: find the Smak value from VMP product page structure
-          // "<dt>Smak</dt><dd>Fast med god fylde..."
-          const smakM = html.match(/<dt[^>]*>Smak<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
-          const luktM = html.match(/<dt[^>]*>Lukt<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i);
-          const set2=(id,v)=>{const el=document.getElementById(id);if(el&&v&&!el.value)el.value=v.trim();};
+          // VMP product page: SmakSmak[value]LuktLukt[value] pattern (repeated labels)
+          // Also try: "Smak</dt>" followed by value in next element
+          const smakM = html.match(/Smak<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i)
+            || html.match(/SmakSmak([^<]{10,200}?)(?:Farge|Lukt|Land)/i)
+            || html.match(/"smak"\s*:\s*"([^"]+)"/i);
+          const luktM = html.match(/Lukt<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/i)
+            || html.match(/LuktLukt([^<]{10,200}?)(?:Smak|Farge|Land)/i);
           if(smakM) set2('nw-taste', smakM[1]);
-          if(luktM) set2('nw-desc',  luktM[1]); // use smell as description if no desc
+          if(luktM) set2('nw-desc',  luktM[1]);
         }
       }catch(e){ /* HTML scraping failed silently */ }
     }
