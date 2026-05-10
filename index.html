@@ -1166,50 +1166,54 @@ async function selectVmpProduct(pid, searchData){
   const profPreview=document.getElementById('nw-prof-preview');
   if(profPreview){ profPreview.textContent='⏳ Henter profildata...'; profPreview.style.color='#888'; }
 
-  // Fetch full details from details-API via Worker (now has subscription key)
+  // Fetch product page via Worker — parses __NEXT_DATA__ to get basiccharacteristics
   try{
-    const detailUrl=`https://apis.vinmonopolet.no/products/v0/details-normal?productId=${pid}&maxResults=1`;
-    console.log('Fetching details for pid:', pid);
-    console.log('Detail URL via proxy:', `${VMP_PROXY}?url=${encodeURIComponent(detailUrl)}`);
-    const data=await vmpFetch(detailUrl);
-    console.log('Details response:', JSON.stringify(data).substring(0,500));
-    const p=Array.isArray(data)?data[0]:data;
+    const res = await fetch(`${VMP_PROXY}?product=${pid}`);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const p = await res.json();
 
-    if(p){
-      // Fill additional fields from details
-      const taste=(p.characteristics||[]).map(x=>x.name).join(', ');
-      const desc=p.description?.characteristicDescription||'';
-      if(taste) set('nw-taste', taste);
-      if(desc)  set('nw-desc',  desc);
+    if(p.error){
+      // Worker returned debug info — profile unavailable but not fatal
+      window._vmpProfile={};
+      if(profPreview){ profPreview.textContent=''; }
+      return;
+    }
 
-      // Profile values (1-12 scale)
-      const bc=p.basiccharacteristics||{};
-      console.log('VMP details raw:', JSON.stringify(p).substring(0,1000));
-      console.log('basiccharacteristics:', JSON.stringify(bc));
-      const fylde    = bc.fullness    ??bc.fylde    ??null;
-      const friskhet = bc.freshness   ??bc.friskhet ??null;
-      const sodme    = bc.sweetness   ??bc.sodme    ??null;
-      const garve    = bc.bitterness  ??bc.tannins  ??bc.garvestoff??null;
-      console.log('Profile values:', {fylde,friskhet,sodme,garve});
+    // Extract profile values from __NEXT_DATA__ structure
+    // VMP Next.js stores these in various locations — try all known paths
+    const bc = p.basicCharacteristics || p.basiccharacteristics
+      || p.content?.basicCharacteristics || p.productData?.basicCharacteristics || {};
 
-      window._vmpProfile={fylde,friskhet,sodme,garve};
+    const fylde    = bc.fullness    ??bc.fylde    ??bc.body    ??null;
+    const friskhet = bc.freshness   ??bc.friskhet ??bc.acidity ??null;
+    const sodme    = bc.sweetness   ??bc.sodme    ??null;
+    const garve    = bc.bitterness  ??bc.tannins  ??bc.garvestoff??null;
 
-      if(profPreview){
-        const type=searchData.type||'red';
-        const vals=[
-          fylde    !=null?`FYL ${fylde}/12`:'',
-          friskhet !=null?`FRI ${friskhet}/12`:'',
-          sodme    !=null&&type!=='red'?`SØD ${sodme}/12`:'',
-          garve    !=null&&type==='red'?`GAR ${garve}/12`:'',
-        ].filter(Boolean).join(' · ');
-        profPreview.textContent=vals?'✓ Profil: '+vals:'';
-        profPreview.style.color=vals?'#2d6a2d':'#888';
-      }
+    // Also try to get taste/food/desc if not already filled
+    const set2=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!==''&&!el.value)el.value=v;};
+    const taste = (p.characteristics||p.content?.characteristics||[]).map(x=>x.name||x).join(', ');
+    const food  = (p.food||p.content?.isGoodFor||p.readySteadyDrink||[]).map(x=>x.name||x).join(', ');
+    const desc  = p.description?.characteristicDescription||p.content?.description||'';
+    if(taste) set2('nw-taste', taste);
+    if(food)  set2('nw-food',  food);
+    if(desc)  set2('nw-desc',  desc);
+
+    window._vmpProfile={fylde,friskhet,sodme,garve};
+
+    if(profPreview){
+      const type=searchData.type||'red';
+      const vals=[
+        fylde    !=null?`FYL ${fylde}/12`:'',
+        friskhet !=null?`FRI ${friskhet}/12`:'',
+        sodme    !=null&&type!=='red'?`SØD ${sodme}/12`:'',
+        garve    !=null&&type==='red' ?`GAR ${garve}/12`:'',
+      ].filter(Boolean).join(' · ');
+      profPreview.textContent=vals?'✓ Profil: '+vals:'(Ingen profilverdier funnet)';
+      profPreview.style.color=vals?'#2d6a2d':'#888';
     }
   }catch(e){
     window._vmpProfile={};
-    if(profPreview){ profPreview.textContent='⚠ Feil: '+e.message; profPreview.style.color='#a32d2d'; }
-    console.error('Details fetch failed:', e.message, e);
+    if(profPreview){ profPreview.textContent='⚠ Profilhenting feilet'; profPreview.style.color='#996600'; }
   }
 }
 
