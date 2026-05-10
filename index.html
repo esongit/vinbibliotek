@@ -1145,45 +1145,65 @@ async function doVmpSearch(q){
 }
 
 async function selectVmpProduct(pid, searchData){
-  // Use data already fetched from search-API — no extra API call needed
   const box=document.getElementById('nw-search-results');
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};
 
+  // Fill fields from search data immediately
   set('nw-name',   searchData.name);
   set('nw-grape',  searchData.grape);
   set('nw-region', searchData.region);
   set('nw-vmpid',  pid);
   set('nw-food',   searchData.food);
   if(searchData.price) set('nw-price', Math.round(searchData.price));
-
   const typeEl=document.getElementById('nw-type');
   if(typeEl) typeEl.value=searchData.type||'red';
-
-  // Store profile values for addManualWine
-  window._vmpProfile={
-    fylde:    searchData.fylde,
-    friskhet: searchData.friskhet,
-    sodme:    searchData.sodme,
-    garve:    searchData.garve,
-  };
-
   if(box) box.style.display='none';
   const badge=document.getElementById('nw-autofill-badge');
   if(badge) badge.style.display='inline';
   const searchEl=document.getElementById('nw-search');
   if(searchEl) searchEl.value=searchData.name;
 
-  // Show profile preview
   const profPreview=document.getElementById('nw-prof-preview');
-  if(profPreview){
-    const vals=[
-      searchData.fylde    !=null?`FYL ${searchData.fylde}/12`:'',
-      searchData.friskhet !=null?`FRI ${searchData.friskhet}/12`:'',
-      searchData.sodme    !=null&&searchData.type!=='red'?`SØD ${searchData.sodme}/12`:'',
-      searchData.garve    !=null&&searchData.type==='red'?`GAR ${searchData.garve}/12`:'',
-    ].filter(Boolean).join(' · ');
-    profPreview.textContent=vals?'✓ Profil: '+vals:'';
-    profPreview.style.color='#2d6a2d';
+  if(profPreview){ profPreview.textContent='⏳ Henter profildata...'; profPreview.style.color='#888'; }
+
+  // Fetch full details from details-API via Worker (now has subscription key)
+  try{
+    const detailUrl=`https://apis.vinmonopolet.no/products/v0/details-normal?productId=${pid}&maxResults=1`;
+    const data=await vmpFetch(detailUrl);
+    const p=Array.isArray(data)?data[0]:data;
+
+    if(p){
+      // Fill additional fields from details
+      const taste=(p.characteristics||[]).map(x=>x.name).join(', ');
+      const desc=p.description?.characteristicDescription||'';
+      if(taste) set('nw-taste', taste);
+      if(desc)  set('nw-desc',  desc);
+
+      // Profile values (1-12 scale)
+      const bc=p.basiccharacteristics||{};
+      const fylde    = bc.fullness    ??bc.fylde    ??null;
+      const friskhet = bc.freshness   ??bc.friskhet ??null;
+      const sodme    = bc.sweetness   ??bc.sodme    ??null;
+      const garve    = bc.bitterness  ??bc.tannins  ??bc.garvestoff??null;
+
+      window._vmpProfile={fylde,friskhet,sodme,garve};
+
+      if(profPreview){
+        const type=searchData.type||'red';
+        const vals=[
+          fylde    !=null?`FYL ${fylde}/12`:'',
+          friskhet !=null?`FRI ${friskhet}/12`:'',
+          sodme    !=null&&type!=='red'?`SØD ${sodme}/12`:'',
+          garve    !=null&&type==='red'?`GAR ${garve}/12`:'',
+        ].filter(Boolean).join(' · ');
+        profPreview.textContent=vals?'✓ Profil: '+vals:'';
+        profPreview.style.color=vals?'#2d6a2d':'#888';
+      }
+    }
+  }catch(e){
+    window._vmpProfile={};
+    if(profPreview){ profPreview.textContent='⚠ Profildata ikke tilgjengelig'; profPreview.style.color='#996600'; }
+    console.warn('Details fetch failed:', e.message);
   }
 }
 
