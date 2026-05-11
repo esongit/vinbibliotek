@@ -6,142 +6,158 @@
 <title>🍷 Vinbibliotek</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh;}
-.container{max-width:960px;margin:0 auto;padding:1.5rem 1rem 4rem;}
-.lib-header{padding:1rem 0 .75rem;border-bottom:1px solid #ddd;margin-bottom:1rem;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:8px;}
-.lib-title{font-size:24px;font-weight:600;letter-spacing:-.5px;}
-.lib-subtitle{font-size:12px;color:#888;margin-top:2px;}
-.sync-status{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:500;}
-.sync-ok{background:#DFF0D8;color:#2d6a2d;}.sync-wait{background:#FFF3DC;color:#996600;}
-.sync-off{background:#f0f0f0;color:#888;}.sync-err{background:#FDECEA;color:#a32d2d;}
-.toolbar{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px;}
-.toolbar-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
-.toolbar-label{font-size:10px;font-weight:600;color:#aaa;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;min-width:48px;}
-.search-input{flex:1;min-width:160px;font-size:13px;padding:6px 11px;border:1px solid #ddd;border-radius:20px;background:#f9f9f9;outline:none;}
-.search-input:focus{border-color:#999;background:#fff;}
-.toggle-btn{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid #ddd;background:#fff;color:#666;cursor:pointer;transition:all .13s;user-select:none;}
-.toggle-btn.active-type-red{background:#c03030;color:#fff;border-color:#902020;}
-.toggle-btn.active-type-white{background:#f5e84a;color:#7a6a00;border-color:#d4c830;}
-.toggle-btn.active-type-rose{background:#f4a0b0;color:#7a1030;border-color:#d07080;}
-.toggle-btn.active-type-other{background:#b0b0b0;color:#fff;border-color:#888;}
-.toggle-btn.active-status{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
-.sort-select{font-size:11px;padding:4px 9px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#444;cursor:pointer;outline:none;}
-.sort-dir-btn{font-size:14px;padding:3px 9px;border-radius:20px;border:1px solid #ddd;background:#fff;color:#444;cursor:pointer;line-height:1.4;}
-.sort-dir-btn:hover{background:#f0f0f0;}
-.btn-small{font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;white-space:nowrap;}
-.btn-small:hover{background:#f0f0f0;}
-.btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
-.btn-backup{background:#e8f0fe;color:#1a56b0;border-color:#b8d0f9;}
-.section-label{font-size:10px;font-weight:600;color:#aaa;letter-spacing:.08em;text-transform:uppercase;margin:1.25rem 0 8px;}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0a0a;color:#f0ece8;min-height:100vh;}
+.container{max-width:980px;margin:0 auto;padding:1rem 1rem 4rem;}
 
-/* DRAG SORT */
-.wine-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,border-color .15s;}
-.wine-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.1);border-color:#bbb;}
-.wine-card.boring{opacity:.4;}
-.wine-card.dragging{opacity:.4;border:2px dashed #aaa;}
-.wine-card.drag-over{border:2px dashed #1a1a1a;}
-.drag-handle{position:absolute;top:6px;right:6px;width:20px;height:20px;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.85);border-radius:4px;cursor:grab;font-size:13px;color:#aaa;z-index:2;}
+/* HEADER */
+.lib-header{padding:.75rem 0 .75rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.lib-title{font-size:20px;font-weight:500;letter-spacing:-.3px;color:#fff;}
+.lib-subtitle{font-size:11px;color:rgba(255,255,255,.3);margin-top:1px;}
+.sync-status{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;}
+.sync-ok{background:rgba(16,110,86,.25);color:#5DCAA5;}
+.sync-wait{background:rgba(186,117,23,.2);color:#EF9F27;}
+.sync-off{background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);}
+.sync-err{background:rgba(162,45,45,.2);color:#F09595;}
+
+/* TOOLBAR */
+.toolbar{background:rgba(255,255,255,.04);border:0.5px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:9px;}
+.toolbar-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.toolbar-label{font-size:10px;font-weight:500;color:rgba(255,255,255,.25);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;min-width:48px;}
+.search-input{flex:1;min-width:160px;font-size:13px;padding:7px 14px;border:0.5px solid rgba(255,255,255,.12);border-radius:20px;background:rgba(255,255,255,.07);color:#fff;outline:none;}
+.search-input::placeholder{color:rgba(255,255,255,.25);}
+.search-input:focus{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.1);}
+.toggle-btn{font-size:11px;padding:5px 13px;border-radius:20px;border:0.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.45);cursor:pointer;transition:all .13s;user-select:none;}
+.toggle-btn:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);}
+.toggle-btn.active-type-red{background:#8B2340;color:#fff;border-color:#8B2340;}
+.toggle-btn.active-type-white{background:#7a6800;color:#ffd;border-color:#7a6800;}
+.toggle-btn.active-type-rose{background:#7a2040;color:#ffd;border-color:#7a2040;}
+.toggle-btn.active-type-other{background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.2);}
+.toggle-btn.active-status{background:#8B2340;color:#fff;border-color:#8B2340;}
+.sort-select{font-size:11px;padding:5px 10px;border:0.5px solid rgba(255,255,255,.1);border-radius:20px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);cursor:pointer;outline:none;}
+.sort-dir-btn{font-size:14px;padding:4px 10px;border-radius:20px;border:0.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);cursor:pointer;line-height:1.4;}
+.sort-dir-btn:hover{background:rgba(255,255,255,.12);}
+.btn-small{font-size:11px;padding:6px 13px;border-radius:20px;border:0.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);cursor:pointer;white-space:nowrap;}
+.btn-small:hover{background:rgba(255,255,255,.12);}
+.btn-primary{background:#8B2340;color:#fff;border-color:#8B2340;}
+.btn-primary:hover{background:#a0284a;}
+.btn-backup{background:rgba(56,113,200,.15);color:#85B7EB;border-color:rgba(56,113,200,.3);}
+.btn-prices{background:rgba(16,110,86,.15);color:#5DCAA5;border-color:rgba(16,110,86,.3);}
+.section-label{font-size:10px;font-weight:500;color:rgba(255,255,255,.2);letter-spacing:.08em;text-transform:uppercase;margin:1.25rem 0 8px;}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+@media(max-width:600px){.grid{grid-template-columns:1fr;}.wine-card{display:flex;gap:0;}.card-img-area{width:110px;height:auto;min-height:140px;flex-shrink:0;border-radius:14px 0 0 14px;}.card-body{flex:1;padding:12px;}.card-name{font-size:13px;}.card-sub{font-size:11px;}.card-footer{margin-top:8px;}}
+
+/* WINE CARD */
+.wine-card{background:#1a1212;border:0.5px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;cursor:pointer;transition:border-color .15s,transform .1s;}
+.wine-card:hover{border-color:rgba(255,255,255,.18);transform:translateY(-1px);}
+.wine-card.meh{opacity:.4;}
+.wine-card.dragging{opacity:.35;border:1.5px dashed rgba(255,255,255,.3);}
+.wine-card.drag-over{border:1.5px dashed #8B2340;}
+.drag-handle{position:absolute;top:6px;right:6px;width:20px;height:20px;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);border-radius:4px;cursor:grab;font-size:13px;color:rgba(255,255,255,.4);z-index:2;}
 .sort-custom .drag-handle{display:flex;}
 .sort-custom .wine-card{cursor:grab;}
+.card-img-area{position:relative;width:100%;height:155px;background:linear-gradient(160deg,#2a1a1a,#180e0e);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.card-img-area img{max-width:100%;max-height:145px;object-fit:contain;padding:8px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.7));}
+.type-icon-badge{position:absolute;bottom:6px;left:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.5);border:0.5px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;}
+.card-status-badges{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
+.card-body{padding:9px 11px 11px;}
+.card-name{font-size:11px;font-weight:500;line-height:1.35;margin-bottom:2px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-sub{font-size:10px;color:rgba(255,255,255,.3);margin-bottom:5px;}
+.card-dice-row{display:flex;align-items:center;gap:4px;margin-bottom:3px;}
+.card-footer{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:5px;}
+.price-val{font-size:12px;font-weight:500;color:#D4A259;}
+.price-date{font-size:9px;color:rgba(255,255,255,.2);display:block;}
 
-.card-img-area{position:relative;width:100%;height:155px;background:#f9f8f5;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.card-img-area img{max-width:100%;max-height:155px;object-fit:contain;padding:7px;}
-.type-icon-badge{position:absolute;bottom:6px;left:6px;width:27px;height:27px;border-radius:50%;background:#fff;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.08);}
-.card-body{padding:8px 10px 10px;}
-.card-name{font-size:11px;font-weight:600;line-height:1.35;margin-bottom:2px;}
-.card-sub{font-size:10px;color:#888;margin-bottom:4px;}
-.card-dice-row{display:flex;align-items:center;gap:4px;margin-bottom:2px;}
-.card-footer{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:4px;}
-.price-val{font-size:12px;font-weight:600;}
-.price-date{font-size:10px;color:#bbb;display:block;}
+/* STATUS BADGES */
 .status-badge{font-size:9px;padding:2px 7px;border-radius:9px;font-weight:600;white-space:nowrap;}
-.badge-pending{background:#FFF3DC;color:#996600;}
-.badge-all{background:#DFF0D8;color:#2d6a2d;}
-.badge-boring{background:#FDECEA;color:#a32d2d;}
+.badge-har{background:rgba(16,110,86,.7);color:#9FE1CB;}
+.badge-bestill{background:rgba(24,95,165,.7);color:#B5D4F4;}
+.badge-meh{background:rgba(255,255,255,.1);color:rgba(255,255,255,.35);}
 
 /* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:12px;}
-.modal{background:#fff;border-radius:14px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 16px 50px rgba(0,0,0,.22);}
-.modal-img-area{position:relative;width:100%;height:260px;background:#f9f8f5;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px 14px 0 0;}
-.modal-img-area img{max-width:100%;max-height:260px;object-fit:contain;padding:12px;cursor:zoom-in;transition:transform .15s;}
-.modal-type-badge{position:absolute;bottom:9px;left:9px;width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:1000;padding:12px;}
+.modal{background:#1a1212;border-radius:16px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;border:0.5px solid rgba(255,255,255,.1);}
+.modal-img-area{position:relative;width:100%;height:260px;background:linear-gradient(160deg,#2a1515,#180e0e);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:16px 16px 0 0;}
+.modal-img-area img{max-width:100%;max-height:260px;object-fit:contain;padding:12px;cursor:zoom-in;filter:drop-shadow(0 6px 20px rgba(0,0,0,.8));transition:transform .15s;}
+.modal-type-badge{position:absolute;bottom:9px;left:9px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);border:0.5px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;}
 .img-btn-row{position:absolute;bottom:9px;right:9px;display:flex;gap:6px;}
-.img-btn{font-size:11px;padding:4px 9px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:rgba(255,255,255,.9);cursor:pointer;white-space:nowrap;}
-.img-btn:hover{background:#fff;}
+.img-btn{font-size:11px;padding:4px 10px;border-radius:20px;border:0.5px solid rgba(255,255,255,.2);background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);cursor:pointer;white-space:nowrap;}
+.img-btn:hover{background:rgba(0,0,0,.7);}
 .modal-body{padding:1rem 1.1rem;}
-.modal-title{font-size:16px;font-weight:600;margin-bottom:2px;line-height:1.3;}
-.modal-meta{font-size:11px;color:#888;margin-bottom:12px;}
+.modal-title{font-size:17px;font-weight:500;margin-bottom:3px;line-height:1.3;color:#fff;}
+.modal-meta{font-size:11px;color:rgba(255,255,255,.35);margin-bottom:12px;}
 .detail-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:12px;margin-bottom:10px;align-items:center;}
-.dl{color:#888;}.dv{color:#1a1a1a;}
-.desc-text{font-size:12px;color:#666;line-height:1.6;margin:8px 0;border-top:1px solid #f0f0f0;padding-top:8px;}
-.tasting-label{font-size:10px;color:#888;margin-bottom:3px;margin-top:8px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;}
-textarea.tasting-note{width:100%;font-size:12px;padding:8px 9px;border-radius:7px;border:1px solid #ddd;color:#1a1a1a;resize:vertical;min-height:55px;font-family:inherit;outline:none;}
+.dl{color:rgba(255,255,255,.35);font-weight:500;}.dv{color:rgba(255,255,255,.75);}
+.desc-text{font-size:12px;color:rgba(255,255,255,.4);line-height:1.65;margin:8px 0;border-top:0.5px solid rgba(255,255,255,.07);padding-top:8px;}
+.tasting-label{font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px;margin-top:8px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;}
+textarea.tasting-note{width:100%;font-size:12px;padding:8px 10px;border-radius:10px;border:0.5px solid rgba(255,255,255,.12);color:#fff;background:rgba(255,255,255,.06);resize:vertical;min-height:55px;font-family:inherit;outline:none;}
 .stars6-edit{display:flex;gap:4px;margin:5px 0 10px;}
-.star6{font-size:21px;cursor:pointer;color:#ddd;line-height:1;transition:color .1s;}
-.star6.lit{color:#f0a500;}.star6:hover{color:#f0a500;}
+.star6{font-size:22px;cursor:pointer;color:rgba(255,255,255,.15);line-height:1;transition:color .1s;}
+.star6.lit{color:#D4A259;}.star6:hover{color:#D4A259;}
 .modal-actions{display:flex;gap:7px;flex-wrap:wrap;padding:0 1.1rem 1.1rem;}
-.action-btn{font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-family:inherit;}
-.action-btn:hover{background:#f5f5f5;}
-.action-btn.green{background:#DFF0D8;color:#2d6a2d;border-color:#b2d9a8;}
-.action-btn.red{background:#FDECEA;color:#a32d2d;border-color:#f7c1c1;}
-.action-btn.blue{background:#e8f0fe;color:#1a56b0;border-color:#b8d0f9;}
-.action-btn.amber{background:#FFF3DC;color:#996600;border-color:#f0d080;}
-.dismiss-warning{background:#FDECEA;border:1px solid #f7c1c1;border-radius:7px;padding:8px 10px;font-size:11px;color:#a32d2d;margin-bottom:8px;display:flex;gap:7px;}
-.note-saved{font-size:10px;color:#2d6a2d;margin-top:3px;}
-.action-btn.dirty{background:#DFF0D8!important;color:#2d6a2d!important;border-color:#b2d9a8!important;font-weight:600;}
-.edit-form-section{border-top:1px solid #f0f0f0;padding-top:10px;margin-top:6px;}
+.action-btn{font-size:11px;padding:6px 14px;border-radius:20px;border:0.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;}
+.action-btn:hover{background:rgba(255,255,255,.12);}
+.action-btn.green{background:rgba(16,110,86,.25);color:#5DCAA5;border-color:rgba(16,110,86,.4);}
+.action-btn.red{background:rgba(162,45,45,.2);color:#F09595;border-color:rgba(162,45,45,.35);}
+.action-btn.blue{background:rgba(24,95,165,.2);color:#85B7EB;border-color:rgba(24,95,165,.35);}
+.action-btn.amber{background:rgba(186,117,23,.2);color:#EF9F27;border-color:rgba(186,117,23,.35);}
+.dismiss-warning{background:rgba(162,45,45,.15);border:0.5px solid rgba(162,45,45,.3);border-radius:10px;padding:8px 10px;font-size:11px;color:#F09595;margin-bottom:8px;display:flex;gap:7px;}
+.note-saved{font-size:10px;color:#5DCAA5;margin-top:3px;}
+.action-btn.dirty{background:rgba(16,110,86,.3)!important;color:#5DCAA5!important;border-color:rgba(16,110,86,.5)!important;font-weight:600;}
+.edit-form-section{border-top:0.5px solid rgba(255,255,255,.07);padding-top:10px;margin-top:6px;}
 .edit-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:7px;}
-.edit-row input,.edit-row select,.edit-row textarea{flex:1;min-width:100px;font-size:12px;padding:6px 9px;border:1px solid #ddd;border-radius:7px;font-family:inherit;outline:none;background:#fff;}
-.add-form{background:#f9f8f5;border-radius:10px;border:1px solid #e5e5e5;padding:.9rem 1.1rem;margin-bottom:1.25rem;}
-.add-form h3{font-size:13px;font-weight:600;margin-bottom:9px;}
+.edit-row input,.edit-row select,.edit-row textarea{flex:1;min-width:100px;font-size:12px;padding:7px 10px;border:0.5px solid rgba(255,255,255,.12);border-radius:10px;font-family:inherit;outline:none;background:rgba(255,255,255,.07);color:#fff;}
+.add-form{background:rgba(255,255,255,.04);border-radius:12px;border:0.5px solid rgba(255,255,255,.08);padding:.9rem 1.1rem;margin-bottom:1.25rem;}
+.add-form h3{font-size:13px;font-weight:500;margin-bottom:9px;color:#fff;}
 .form-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:7px;}
-.form-row input,.form-row select,.form-row textarea{flex:1;min-width:100px;font-size:12px;padding:6px 9px;border:1px solid #ddd;border-radius:7px;font-family:inherit;outline:none;background:#fff;}
-.update-banner{font-size:11px;padding:6px 11px;background:#f5f5f5;border-radius:7px;margin-bottom:9px;}
-.count-info{font-size:11px;color:#bbb;margin-bottom:6px;}
-.empty{text-align:center;padding:2.5rem;color:#bbb;font-size:13px;}
-code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
+.form-row input,.form-row select,.form-row textarea{flex:1;min-width:100px;font-size:12px;padding:7px 10px;border:0.5px solid rgba(255,255,255,.12);border-radius:10px;font-family:inherit;outline:none;background:rgba(255,255,255,.07);color:#fff;}
+.form-row input::placeholder,.form-row textarea::placeholder{color:rgba(255,255,255,.25);}
+.update-banner{font-size:11px;padding:6px 11px;background:rgba(255,255,255,.05);border-radius:10px;margin-bottom:9px;color:rgba(255,255,255,.5);}
+.count-info{font-size:11px;color:rgba(255,255,255,.2);margin-bottom:6px;}
+.empty{text-align:center;padding:2.5rem;color:rgba(255,255,255,.2);font-size:13px;}
+code{background:rgba(255,255,255,.1);padding:1px 4px;border-radius:3px;font-size:10px;color:rgba(255,255,255,.6);}
 
 /* LIGHTBOX */
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:2000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;}
 .lightbox img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px;}
 
 /* SEARCH X BUTTON */
 .search-wrap{position:relative;flex:1;min-width:160px;display:flex;align-items:center;}
 .search-wrap input{width:100%;padding-right:28px;}
-.search-clear{position:absolute;right:8px;font-size:14px;color:#aaa;cursor:pointer;display:none;line-height:1;background:none;border:none;padding:0;}
-.search-clear:hover{color:#666;}
+.search-clear{position:absolute;right:10px;font-size:14px;color:rgba(255,255,255,.3);cursor:pointer;display:none;line-height:1;background:none;border:none;padding:0;}
+.search-clear:hover{color:rgba(255,255,255,.6);}
 
 /* PROFILE CIRCLES */
 .profile-circles{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .profile-circle-wrap{display:flex;flex-direction:row;align-items:center;gap:3px;}
 .profile-circle-wrap.empty{visibility:hidden;pointer-events:none;}
-.profile-label{font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
-.profile-label-full{font-size:10px;color:#888;text-align:center;}
+.profile-label{font-size:9px;color:rgba(255,255,255,.3);font-weight:500;text-transform:uppercase;letter-spacing:.04em;}
+.profile-label-full{font-size:10px;color:rgba(255,255,255,.4);}
 
-/* STATUS BADGE UPDATES */
-.badge-har{background:#e8f4e8;color:#2d6a2d;}
-.badge-bestill{background:#e8f0fe;color:#1a56b0;}
-.badge-meh{background:#f0f0f0;color:#999;}
-.action-btn.meh{background:#f0f0f0;color:#999;border-color:#ddd;}
-.action-btn.meh:hover{background:#e5e5e5;}
+/* ACTION BTN MEH */
+.action-btn.meh{background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);border-color:rgba(255,255,255,.1);}
+.action-btn.meh:hover{background:rgba(255,255,255,.1);}
+
+/* SETUP SCREEN */
+#setup-screen{background:#0f0a0a!important;}
 </style>
 </head>
 <body>
 
 <!-- SETUP SCREEN -->
 <div id="setup-screen" style="display:none;position:fixed;inset:0;background:#f5f4f0;z-index:3000;align-items:center;justify-content:center;padding:1rem;">
-  <div style="background:#fff;border-radius:16px;border:1px solid #e5e5e5;width:100%;max-width:420px;padding:2rem;box-shadow:0 8px 32px rgba(0,0,0,.12);">
+  <div style="background:#1a1212;border-radius:16px;border:0.5px solid rgba(255,255,255,.1);width:100%;max-width:420px;padding:2rem;">
     <div style="font-size:28px;margin-bottom:6px;">🍷</div>
     <div style="font-size:20px;font-weight:600;margin-bottom:4px;">Vinbibliotek</div>
-    <div style="font-size:13px;color:#888;margin-bottom:1.5rem;">Koble til din JSONBin-database.</div>
-    <div style="font-size:11px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">JSONBin Bin ID</div>
-    <input id="setup-bin-id" placeholder="f.eks. 69ee057eaaba8821973c41c3" style="width:100%;font-size:13px;padding:9px 11px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-family:monospace;outline:none;"/>
-    <div style="font-size:11px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Access Key</div>
-    <form autocomplete="on" onsubmit="return false;" style="margin:0;padding:0;"><input id="setup-access-key" type="password" placeholder="$2a$10$..." autocomplete="current-password" style="width:100%;font-size:13px;padding:9px 11px;border:1px solid #ddd;border-radius:8px;margin-bottom:6px;font-family:monospace;outline:none;"/></form>
-    <div style="font-size:11px;color:#888;margin-bottom:16px;line-height:1.5;">Finn disse på <a href="https://jsonbin.io" target="_blank" style="color:#1a56b0;">jsonbin.io</a> — Bin ID er i URL-en, Access Key under API Keys.</div>
-    <div id="setup-error" style="font-size:12px;color:#a32d2d;margin-bottom:10px;min-height:16px;"></div>
-    <button id="setup-btn" onclick="saveSetup()" style="width:100%;font-size:14px;font-weight:500;padding:10px;border-radius:8px;border:none;background:#1a1a1a;color:#fff;cursor:pointer;">Lagre og koble til</button>
+    <div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:1.5rem;">Koble til din JSONBin-database.</div>
+    <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,.3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">JSONBin Bin ID</div>
+    <input id="setup-bin-id" placeholder="f.eks. 69ee057eaaba8821973c41c3" style="width:100%;font-size:13px;padding:9px 11px;border:0.5px solid rgba(255,255,255,.15);border-radius:10px;margin-bottom:12px;font-family:monospace;outline:none;background:rgba(255,255,255,.07);color:#fff;"/>
+    <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,.3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Access Key</div>
+    <form autocomplete="on" onsubmit="return false;" style="margin:0;padding:0;"><input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true"/><input id="setup-access-key" type="password" placeholder="$2a$10$..." autocomplete="current-password" style="width:100%;font-size:13px;padding:9px 11px;border:0.5px solid rgba(255,255,255,.15);border-radius:10px;margin-bottom:6px;font-family:monospace;outline:none;background:rgba(255,255,255,.07);color:#fff;"/></form>
+    <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:16px;line-height:1.5;">Finn disse på <a href="https://jsonbin.io" target="_blank" style="color:#85B7EB;">jsonbin.io</a> — Bin ID er i URL-en, Access Key under API Keys.</div>
+    <div id="setup-error" style="font-size:12px;color:#F09595;margin-bottom:10px;min-height:16px;"></div>
+    <button id="setup-btn" onclick="saveSetup()" style="width:100%;font-size:14px;font-weight:500;padding:10px;border-radius:20px;border:none;background:#8B2340;color:#fff;cursor:pointer;">Lagre og koble til</button>
   </div>
 </div>
 
@@ -154,6 +170,7 @@ code{background:#eee;padding:1px 4px;border-radius:3px;font-size:10px;}
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
       <span id="sync-badge" class="sync-status sync-off">⏳ Laster...</span>
+      <button class="btn-small btn-prices" id="update-prices-btn" onclick="updatePricesFromVMP()">↻ Oppdater priser</button>
       <button class="btn-small btn-backup" onclick="downloadBackup()">⬇ Backup</button>
       <button class="btn-small" onclick="openSettings()" title="Innstillinger">⚙</button>
       <button class="btn-small btn-primary" onclick="toggleManualForm()">+ Legg til vin</button>
@@ -417,14 +434,22 @@ function toggleSortDir(){sortAsc=!sortAsc;document.getElementById('sort-dir-btn'
 // Statuses: null/undefined = no status, 'har', 'bestill', 'meh'
 // A wine with no status shows under 'alle' (all except meh)
 // 'meh' wines only show when meh filter active
-function effectiveStatus(w){return w.status||null;}
+function effectiveStatus(w){
+  const s=w.status;
+  if(s==='boring'||s==='dismissed') return 'meh';
+  if(s==='pending'||s==='all') return null;
+  if(s==='har'||s==='bestill'||s==='meh') return s;
+  return null;
+}
 function hasTasted(w){return !!(w.rating||(w.note&&w.note.trim()));}
 function wineMatchesFilter(w){
   const st=effectiveStatus(w);
   if(activeStatuses.has('alle')) return st!=='meh';
   if(activeStatuses.has('meh'))  return st==='meh';
-  // har/bestill combination
-  return activeStatuses.has(st);
+  let ok=false;
+  if(activeStatuses.has('har'))     ok=ok||(st==='har');
+  if(activeStatuses.has('bestill')) ok=ok||(st==='bestill');
+  return ok;
 }
 
 /* ── IMAGE ── */
@@ -641,23 +666,24 @@ function render(){
 
 function cardHTML(w,draggable=false){
   const st=effectiveStatus(w);
-  const badge=st==='pending'?'<span class="status-badge badge-pending">Ikke smakt</span>':
-    st==='boring'?'<span class="status-badge badge-boring">Boring</span>':'';
-  const diceRow=w.expertScore?`<div class="card-dice-row">${diceSVG(w.expertScore,14)}<span style="font-size:9px;color:#999;font-weight:600;">${scoreTag(w)}</span></div>`:'';
+  // Status badges on image — Har and/or Bestill
+  const harBadge=st==='har'||w.status==='har'?'<span class="status-badge badge-har">Har</span>':'';
+  const bestillBadge=st==='bestill'||w.status==='bestill'?'<span class="status-badge badge-bestill">Bestill</span>':'';
+  const statusBadges=(harBadge||bestillBadge)?`<div class="card-status-badges">${harBadge}${bestillBadge}</div>`:'';
+  const diceRow=w.expertScore?`<div class="card-dice-row">${diceSVG(w.expertScore,14)}<span style="font-size:9px;color:rgba(255,255,255,.3);font-weight:500;">${scoreTag(w)}</span></div>`:'';
   const profRow=profileCirclesHTML(w,true);
   const profSection=profRow?`<div style="margin-bottom:3px;">${profRow}</div>`:'';
-  const userStars=w.rating?`<div style="display:flex;gap:1px;margin-bottom:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:10px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:'';
+  const userStars=w.rating?`<div style="display:flex;gap:1px;margin-bottom:3px;">${Array.from({length:6},(_,i)=>`<span style="font-size:10px;color:${i<w.rating?'#D4A259':'rgba(255,255,255,.12)'};">★</span>`).join('')}</div>`:'';
   const dragAttr=draggable?`draggable="true" data-id="${w.id}"`:'' ;
   const handle=draggable?`<div class="drag-handle">⠿</div>`:'';
-  return `<div class="wine-card${st==='boring'?' boring':''}" ${dragAttr} onclick="openModal(${w.id})" style="position:relative;">
+  return `<div class="wine-card${st==='meh'?' meh':''}" ${dragAttr} onclick="openModal(${w.id})" style="position:relative;">
     ${handle}
-    <div class="card-img-area">${imgAreaHTML(w,155)}<div class="type-icon-badge">${typeIcon(w.type,14)}</div></div>
+    <div class="card-img-area">${imgAreaHTML(w,155)}${statusBadges}<div class="type-icon-badge">${typeIcon(w.type,14)}</div></div>
     <div class="card-body">${diceRow}${profSection}${userStars}
       <div class="card-name">${w.name}</div>
       <div class="card-sub">${w.grape} · ${w.region}</div>
       <div class="card-footer">
         <div><span class="price-val">${w.price?Math.round(w.price)+' kr':'—'}</span>${w.priceDate?`<span class="price-date">${w.priceDate}</span>`:''}</div>
-        ${badge}
       </div>
     </div>
   </div>`;
@@ -957,6 +983,72 @@ async function saveNote(id){
 // setStatus kept for compatibility
 async function setStatus(id,status){
   await toggleWineStatus(id,status);
+}
+
+/* ── UPDATE PRICES FROM VMP ── */
+function nowLabel(){
+  const d=new Date();
+  const months=['JAN','FEB','MAR','APR','MAI','JUN','JUL','AUG','SEP','OKT','NOV','DES'];
+  return months[d.getMonth()]+String(d.getFullYear()).slice(2);
+}
+
+async function updatePricesFromVMP(){
+  const btn=document.getElementById('update-prices-btn');
+  if(!btn)return;
+  btn.disabled=true;
+  btn.textContent='Oppdaterer...';
+
+  // Show status banner
+  let banner=document.getElementById('update-banner');
+  if(!banner){banner=document.createElement('div');banner.id='update-banner';document.querySelector('.container').insertBefore(banner,document.querySelector('.toolbar'));}
+  const setStatus=(msg,color='rgba(255,255,255,.4)')=>{
+    banner.innerHTML=`<div style="font-size:11px;padding:8px 14px;background:rgba(255,255,255,.05);border-radius:10px;margin-bottom:10px;color:${color};">${msg}</div>`;
+  };
+
+  const total=wines.length;
+  let updated=0, notFound=0, vmpFound=0;
+  const dateLabel=nowLabel();
+
+  for(let i=0;i<wines.length;i++){
+    const w=wines[i];
+    setStatus(`⏳ Oppdaterer ${i+1}/${total}: ${w.name}...`);
+    try{
+      let searchQ=w.vmpId||w.name;
+      const url=`https://www.vinmonopolet.no/vmpws/v2/vmp/products/search?fields=FULL&pageSize=1&currentPage=0&q=${encodeURIComponent(searchQ)}`;
+      const data=await vmpFetch(url);
+      const prod=(data.products||[])[0];
+      if(prod&&prod.price?.value){
+        const newPrice=prod.price.value;
+        // Assign vmpId if missing and we found a match by name
+        if(!w.vmpId&&prod.code){w.vmpId=prod.code;vmpFound++;}
+        if(newPrice!==w.price) updated++;
+        w.price=newPrice;
+        w.priceDate=dateLabel;
+        w.priceUpdatedAt=Date.now()+3600000;
+      } else {
+        notFound++;
+      }
+    }catch(e){ notFound++; }
+    await new Promise(r=>setTimeout(r,300));
+  }
+
+  // Push all to cloud
+  setStatus('⏳ Lagrer oppdaterte priser...');
+  saveLocal();render();
+  if(navigator.onLine){
+    try{
+      await pushCloud();
+      setStatus(`✅ Ferdig! ${updated} priser endret · ${vmpFound} nye varenummer · ${notFound} ikke funnet`,'#5DCAA5');
+    }catch(e){
+      setStatus(`⚠ Priser oppdatert lokalt, men skylagring feilet: ${e.message}`,'#EF9F27');
+    }
+  } else {
+    setStatus(`✅ Priser oppdatert lokalt (offline) — ${updated} endret`,'#5DCAA5');
+  }
+
+  btn.disabled=false;
+  btn.textContent='↻ Oppdater priser';
+  setTimeout(()=>{banner.innerHTML='';},8000);
 }
 
 /* ── MODAL CLOSE ── */
