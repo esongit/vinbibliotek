@@ -313,7 +313,6 @@ let sortAsc=false; // false = descending for most fields
 let showManual=false;
 let selectedId=null;
 let editRating=0;
-let isSyncing=false;
 let dragSrcId=null;
 let isDirty=false;
 
@@ -360,8 +359,8 @@ async function fetchCloud(){
   if(!res.ok)throw new Error('HTTP '+res.status);
   const data=await res.json();
   // support both {wines,order} and plain array
-  if(data.record&&data.record.wines){customOrder=data.record.order||[];return data.record.wines;}
-  return Array.isArray(data.record)?data.record:[];
+  if(data.record&&data.record.wines){return {wines:data.record.wines, order:data.record.order||[]};}
+  return {wines:Array.isArray(data.record)?data.record:[], order:[]};
 }
 async function pushCloud(){
   const url=getBinUrl(),key=getAccessKey();
@@ -392,50 +391,63 @@ function mergeWines(local,cloud){
   });
   return Object.values(map).sort((a,b)=>a.id-b.id);
 }
-async function syncWithCloud(){
-  if(isSyncing)return;isSyncing=true;setSyncBadge('wait','⟳ Syncer...');
-  try{
-    const cloudWines=await fetchCloud();
-    if(wines.length===0&&cloudWines.length>0){wines=cloudWines;ensureOrder();saveLocal();render();setSyncBadge('ok','✓ Synkronisert');isSyncing=false;return;}
-    const merged=mergeWines(wines,cloudWines);
-    const changed=JSON.stringify({wines:merged,order:customOrder})!==JSON.stringify({wines:cloudWines,order:customOrder});
-    if(changed){wines=merged;ensureOrder();await pushCloud();}
-    else wines=merged;
-    saveLocal();render();setSyncBadge('ok','✓ Synkronisert');
-  }catch(e){setSyncBadge('err','⚠ Offline');}
-  isSyncing=false;
+/* ── UNIFIED SYNC ──
+ * syncToCloud serializes all reads/writes via a promise chain (syncChain),
+ * so two rapid saves never overlap fetch+push round-trips. doSync does the
+ * actual fetch → merge → conditional push, with options:
+ *   forcePush: push even if merged result equals cloud (used by user-triggered saves)
+ *   postMergeFilter: predicate run on merged wines (used by deleteWine to drop the
+ *                    just-deleted id even if cloud still has it — poor-man's tombstone)
+ * Throws on push or fetch failure (after also setting the offline badge).
+ */
+let syncChain=Promise.resolve();
+function syncToCloud(opts={}){
+  syncChain = syncChain.catch(()=>{}).then(()=>doSync(opts));
+  return syncChain;
 }
+async function doSync({forcePush=false, postMergeFilter=null}={}){
+  if(!navigator.onLine){setSyncBadge('wait','⏳ Offline');return;}
+  setSyncBadge('wait','⟳ Synker...');
+  let cloud;
+  try{
+    cloud=await fetchCloud();
+  }catch(fetchErr){
+    // Fetch failed — fall back to plain push if caller insists, else surface error
+    if(forcePush){
+      try{await pushCloud();setSyncBadge('ok','✓ Synkronisert');return;}
+      catch(e){setSyncBadge('err','⚠ Offline');throw e;}
+    }
+    setSyncBadge('err','⚠ Offline');
+    throw fetchErr;
+  }
+  let merged=mergeWines(wines,cloud.wines);
+  if(postMergeFilter) merged=merged.filter(postMergeFilter);
+  wines=merged;
+  // Order: if local has none (fresh install), adopt cloud's. Otherwise keep local
+  // (any local reorder is authoritative — there's no per-item timestamp to merge by).
+  if(customOrder.length===0) customOrder=cloud.order.slice();
+  ensureOrder();
+  saveLocal();
+  render();
+  const cloudSnapshot=JSON.stringify({wines:cloud.wines,order:cloud.order});
+  const localSnapshot=JSON.stringify({wines,order:customOrder});
+  if(forcePush || localSnapshot!==cloudSnapshot){
+    try{await pushCloud();}
+    catch(e){setSyncBadge('err','⚠ Offline');throw e;}
+  }
+  setSyncBadge('ok','✓ Synkronisert');
+}
+
 async function saveWine(wine){
   wine.updatedAt=Date.now();
   // Note: priceUpdatedAt is NOT touched here — only set by price update scripts
   const idx=wines.findIndex(w=>w.id===wine.id);
   if(idx>=0)wines[idx]=wine;else{wines.push(wine);customOrder.push(wine.id);}
   saveLocal();render();
-  if(!navigator.onLine){setSyncBadge('wait','⏳ Venter på nett');return;}
-  setSyncBadge('wait','⟳ Synker...');
-  try{
-    // Fetch cloud first, merge with local, then push — protects against stale-state overwrite
-    let cloudWines;
-    try{
-      cloudWines=await fetchCloud();
-    }catch(fetchErr){
-      // If fetch fails, fall back to plain push — better to save local than lose data
-      await pushCloud();
-      setSyncBadge('ok','✓ Synkronisert');
-      return;
-    }
-    const merged=mergeWines(wines,cloudWines);
-    wines=merged;
-    ensureOrder();
-    saveLocal();
-    await pushCloud();
-    render();
-    setSyncBadge('ok','✓ Synkronisert');
-  }catch(e){
-    setSyncBadge('err','⚠ Offline');
-  }
+  try{await syncToCloud({forcePush:true});}
+  catch(e){/* badge already reflects the error */}
 }
-window.addEventListener('online',()=>syncWithCloud());
+window.addEventListener('online',()=>syncToCloud());
 window.addEventListener('offline',()=>setSyncBadge('wait','⏳ Offline'));
 
 /* ── CUSTOM ORDER ── */
@@ -792,8 +804,8 @@ function initDrag(){
       customOrder.splice(srcIdx,1);
       customOrder.splice(tgtIdx,0,dragSrcId);
       saveLocal();
-      if(navigator.onLine)syncWithCloud();
       render();
+      syncToCloud({forcePush:true}).catch(()=>{/* badge reflects state */});
     });
   });
 }
@@ -1073,24 +1085,12 @@ async function updatePricesFromVMP(){
     await new Promise(r=>setTimeout(r,300));
   }
 
-  // Push to cloud with fetch-merge-push to avoid overwriting concurrent changes
+  // Push to cloud via unified sync (fetch-merge-push) to avoid overwriting concurrent changes
   setBannerStatus('⏳ Lagrer oppdaterte priser...');
   saveLocal();render();
   if(navigator.onLine){
     try{
-      // Fetch cloud first, merge with local, then push
-      let cloudWines;
-      try{
-        cloudWines=await fetchCloud();
-        const merged=mergeWines(wines,cloudWines);
-        wines=merged;
-        ensureOrder();
-        saveLocal();
-      }catch(fetchErr){
-        // Fetch failed — fall back to plain push so we don't lose the prices
-      }
-      await pushCloud();
-      render();
+      await syncToCloud({forcePush:true});
       setBannerStatus(`✅ Ferdig! ${updated} priser endret · ${vmpFound} nye varenummer · ${notFound} ikke funnet`,'#5DCAA5');
     }catch(e){
       setBannerStatus(`⚠ Priser oppdatert lokalt, men skylagring feilet: ${e.message}`,'#EF9F27');
@@ -1118,11 +1118,11 @@ async function deleteWine(id){
   saveLocal();
   doCloseModal();
   render();
-  if(navigator.onLine){
-    setSyncBadge('wait','⟳ Lagrer...');
-    try{ await pushCloud(); setSyncBadge('ok','✓ Synkronisert'); }
-    catch(e){ setSyncBadge('err','⚠ Offline'); }
-  }
+  // postMergeFilter drops the deleted id even if cloud still has it (the merge
+  // would otherwise resurrect it). Simpler than tombstones; loses to a concurrent
+  // edit on another device, which is acceptable for a solo-user app.
+  try{await syncToCloud({forcePush:true, postMergeFilter:w=>w.id!==id});}
+  catch(e){/* badge already reflects the error */}
 }
 
 function confirmDelete(id){
@@ -1442,10 +1442,32 @@ async function addManualWine(){
 /* ── BOOT ── */
 async function bootApp(){
   loadLocal();
-  if(wines.length===0){wines=defaultWines.map(w=>({...w}));ensureOrder();saveLocal();}
-  else ensureOrder();
-  render();setSyncBadge('wait','⟳ Syncer...');
-  if(navigator.onLine)await syncWithCloud();else setSyncBadge('wait','⏳ Offline — bruker lokal kopi');
+  ensureOrder();
+  render();
+  if(navigator.onLine){
+    setSyncBadge('wait','⟳ Synker...');
+    try{
+      await syncToCloud();
+      // After successful sync: if both local and cloud were empty, seed defaults
+      if(wines.length===0){
+        wines=defaultWines.map(w=>({...w}));
+        ensureOrder(); saveLocal(); render();
+        try{await syncToCloud({forcePush:true});}catch(e){}
+      }
+    }catch(e){
+      // Sync failed (offline mid-boot, network glitch, etc.): if local is empty, seed defaults locally
+      if(wines.length===0){
+        wines=defaultWines.map(w=>({...w}));
+        ensureOrder(); saveLocal(); render();
+      }
+    }
+  } else {
+    if(wines.length===0){
+      wines=defaultWines.map(w=>({...w}));
+      ensureOrder(); saveLocal(); render();
+    }
+    setSyncBadge('wait','⏳ Offline — bruker lokal kopi');
+  }
 }
 async function init(){
   if(!isConfigured())showSetupScreen();else{hideSetupScreen();await bootApp();}
