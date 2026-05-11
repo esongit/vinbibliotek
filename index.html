@@ -158,7 +158,6 @@ textarea.tasting-note{width:100%;font-size:12px;padding:8px 10px;border-radius:8
 .action-btn.blue{background:#e6f0fb;color:#185fa5;border-color:#b5d4f4;}
 .action-btn.amber{background:#fef3dc;color:#996600;border-color:#f0d080;}
 .dismiss-warning{background:#fdecea;border:1px solid #f7c1c1;border-radius:8px;padding:8px 10px;font-size:11px;color:#a32d2d;margin-bottom:8px;display:flex;gap:7px;}
-.note-saved{font-size:10px;color:#2d6a2d;margin-top:3px;}
 .action-btn.dirty{background:#e8f4e8!important;color:#2d6a2d!important;border-color:#b8d9b8!important;font-weight:600;}
 .edit-form-section{border-top:1px solid #f0ede8;padding-top:10px;margin-top:6px;}
 .edit-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:7px;}
@@ -316,7 +315,7 @@ let selectedId=null;
 let editRating=0;
 let isSyncing=false;
 let dragSrcId=null;
-let isDirty=false, originalNote='', originalRating=0;
+let isDirty=false;
 
 /* ── SETUP ── */
 function showSetupScreen(){document.getElementById('app-root').style.display='none';document.getElementById('setup-screen').style.display='flex';}
@@ -412,17 +411,28 @@ async function saveWine(wine){
   const idx=wines.findIndex(w=>w.id===wine.id);
   if(idx>=0)wines[idx]=wine;else{wines.push(wine);customOrder.push(wine.id);}
   saveLocal();render();
-  // Push directly to cloud — do NOT fetch+merge here, local is authoritative after a save
-  if(navigator.onLine){
-    setSyncBadge('wait','⟳ Lagrer...');
+  if(!navigator.onLine){setSyncBadge('wait','⏳ Venter på nett');return;}
+  setSyncBadge('wait','⟳ Synker...');
+  try{
+    // Fetch cloud first, merge with local, then push — protects against stale-state overwrite
+    let cloudWines;
     try{
+      cloudWines=await fetchCloud();
+    }catch(fetchErr){
+      // If fetch fails, fall back to plain push — better to save local than lose data
       await pushCloud();
       setSyncBadge('ok','✓ Synkronisert');
-    }catch(e){
-      setSyncBadge('err','⚠ Offline');
+      return;
     }
-  } else {
-    setSyncBadge('wait','⏳ Venter på nett');
+    const merged=mergeWines(wines,cloudWines);
+    wines=merged;
+    ensureOrder();
+    saveLocal();
+    await pushCloud();
+    render();
+    setSyncBadge('ok','✓ Synkronisert');
+  }catch(e){
+    setSyncBadge('err','⚠ Offline');
   }
 }
 window.addEventListener('online',()=>syncWithCloud());
@@ -849,7 +859,6 @@ function renderModal(w, editMode=false){
     <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
     <div style="${IL}">Mitt notat</div>
     <textarea class="tasting-note" id="modal-note" rows="3" placeholder="Skriv egne notater her..." style="${IS}resize:vertical;">${w.note||''}</textarea>
-    <div id="note-saved" style="min-height:14px;font-size:10px;color:#2d6a2d;margin-top:2px;"></div>
   ` : `
     ${st==='meh'?`<div style="background:#f0f0f0;border:1px solid #ddd;border-radius:7px;padding:8px 10px;font-size:11px;color:#999;margin-bottom:8px;display:flex;gap:7px;"><span>😶</span><span>Merket som Meh.</span></div>`:''}
     <div class="modal-title">${w.name}</div>
@@ -895,8 +904,6 @@ function renderModal(w, editMode=false){
 
   isDirty=false;
   if(editMode){
-    originalNote=w.note||'';
-    originalRating=w.rating||0;
     editRating=w.rating||0;
     renderStars();
     setTimeout(()=>{
@@ -1017,43 +1024,6 @@ function markDirty(){
   isDirty=true;
   const btn=document.getElementById('edit-save-btn');
   if(btn&&!btn.disabled) btn.className='action-btn green dirty';
-  updateLiveStatus();
-}
-function updateLiveStatus(){
-  const note=document.getElementById('modal-note')?.value||'';
-  const tasted=!!(editRating||(note&&note.trim()));
-  // update boring/pending buttons visibility live
-  const boringBtn=document.querySelector('.action-btn.amber');
-  const pendingBtn=document.querySelector('[onclick*="pending"]');
-  if(tasted){
-    if(boringBtn) boringBtn.style.display='none';
-    if(pendingBtn&&pendingBtn.textContent.includes('Ikke smakt')) pendingBtn.style.display='none';
-  } else {
-    if(boringBtn) boringBtn.style.display='';
-    if(pendingBtn&&pendingBtn.textContent.includes('Ikke smakt')) pendingBtn.style.display='';
-  }
-}
-
-/* ── SAVE NOTE / STATUS ── */
-async function saveNote(id){
-  const w=wines.find(x=>x.id===id);if(!w)return;
-  w.note=document.getElementById('modal-note').value;
-  w.rating=editRating;
-  // if now tasted and was pending → promote to 'all'
-  if(hasTasted(w)&&w.status==='pending') w.status='all';
-  await saveWine(w);
-  isDirty=false;
-  originalNote=w.note;
-  originalRating=w.rating;
-  const btn=document.getElementById('save-note-btn');
-  if(btn) btn.className='action-btn';
-  document.getElementById('note-saved').innerHTML='<span class="note-saved">✓ Lagret</span>';
-  // re-render to update status badges/buttons
-  renderModal(w);
-}
-// setStatus kept for compatibility
-async function setStatus(id,status){
-  await toggleWineStatus(id,status);
 }
 
 /* ── UPDATE PRICES FROM VMP ── */
@@ -1072,7 +1042,7 @@ async function updatePricesFromVMP(){
   // Show status banner
   let banner=document.getElementById('update-banner');
   if(!banner){banner=document.createElement('div');banner.id='update-banner';document.querySelector('.container').insertBefore(banner,document.querySelector('.toolbar'));}
-  const setStatus=(msg,color='rgba(255,255,255,.4)')=>{
+  const setBannerStatus=(msg,color='rgba(255,255,255,.4)')=>{
     banner.innerHTML=`<div style="font-size:11px;padding:8px 14px;background:rgba(255,255,255,.05);border-radius:10px;margin-bottom:10px;color:${color};">${msg}</div>`;
   };
 
@@ -1082,7 +1052,7 @@ async function updatePricesFromVMP(){
 
   for(let i=0;i<wines.length;i++){
     const w=wines[i];
-    setStatus(`⏳ Oppdaterer ${i+1}/${total}: ${w.name}...`);
+    setBannerStatus(`⏳ Oppdaterer ${i+1}/${total}: ${w.name}...`);
     try{
       let searchQ=w.vmpId||w.name;
       const url=`https://www.vinmonopolet.no/vmpws/v2/vmp/products/search?fields=FULL&pageSize=1&currentPage=0&q=${encodeURIComponent(searchQ)}`;
@@ -1095,7 +1065,7 @@ async function updatePricesFromVMP(){
         if(newPrice!==w.price) updated++;
         w.price=newPrice;
         w.priceDate=dateLabel;
-        w.priceUpdatedAt=Date.now()+3600000;
+        w.priceUpdatedAt=Date.now();
       } else {
         notFound++;
       }
@@ -1103,18 +1073,30 @@ async function updatePricesFromVMP(){
     await new Promise(r=>setTimeout(r,300));
   }
 
-  // Push all to cloud
-  setStatus('⏳ Lagrer oppdaterte priser...');
+  // Push to cloud with fetch-merge-push to avoid overwriting concurrent changes
+  setBannerStatus('⏳ Lagrer oppdaterte priser...');
   saveLocal();render();
   if(navigator.onLine){
     try{
+      // Fetch cloud first, merge with local, then push
+      let cloudWines;
+      try{
+        cloudWines=await fetchCloud();
+        const merged=mergeWines(wines,cloudWines);
+        wines=merged;
+        ensureOrder();
+        saveLocal();
+      }catch(fetchErr){
+        // Fetch failed — fall back to plain push so we don't lose the prices
+      }
       await pushCloud();
-      setStatus(`✅ Ferdig! ${updated} priser endret · ${vmpFound} nye varenummer · ${notFound} ikke funnet`,'#5DCAA5');
+      render();
+      setBannerStatus(`✅ Ferdig! ${updated} priser endret · ${vmpFound} nye varenummer · ${notFound} ikke funnet`,'#5DCAA5');
     }catch(e){
-      setStatus(`⚠ Priser oppdatert lokalt, men skylagring feilet: ${e.message}`,'#EF9F27');
+      setBannerStatus(`⚠ Priser oppdatert lokalt, men skylagring feilet: ${e.message}`,'#EF9F27');
     }
   } else {
-    setStatus(`✅ Priser oppdatert lokalt (offline) — ${updated} endret`,'#5DCAA5');
+    setBannerStatus(`✅ Priser oppdatert lokalt (offline) — ${updated} endret`,'#5DCAA5');
   }
 
   btn.disabled=false;
@@ -1186,6 +1168,11 @@ function confirmClose(callback){
 function dismissConfirmClose(){
   const el=document.getElementById('close-confirm');if(el)el.remove();
   isDirty=false;doCloseModal();
+}
+function confirmSaveClose(){
+  const el=document.getElementById('close-confirm');if(el)el.remove();
+  // saveEdit will save the wine and close the modal via doCloseModal
+  if(selectedId!==null) saveEdit(selectedId);
 }
 
 function closeModal(e){
