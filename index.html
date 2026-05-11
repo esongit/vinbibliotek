@@ -54,7 +54,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .wine-card:last-child{border-radius:0 0 10px 10px;}
 .wine-card:only-child{border-radius:10px;}
 .wine-card+.wine-card{border-top:none;}
-.wine-card:hover{background:#f9f8f5;}
+.wine-card:hover{background:#ebe7df;}
 .wine-card.meh{opacity:.45;}
 .wine-card.dragging{opacity:.4;outline:2px dashed #c0b8b0;}
 .wine-card.drag-over{outline:2px dashed #8B1A1A;}
@@ -63,16 +63,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sort-custom .wine-card{cursor:grab;}
 
 /* card image area — desktop */
-.card-img-area{position:relative;width:76px;height:88px;background:#fff;display:flex;align-items:center;justify-content:center;border-right:1px solid #f0ede8;flex-shrink:0;}
+.card-img-area{position:relative;width:76px;height:88px;background:#ffffff;display:flex;align-items:center;justify-content:center;border-right:1px solid #e4dfd6;flex-shrink:0;}
 .card-img-area img{max-width:100%;max-height:76px;object-fit:contain;position:relative;z-index:1;}
 .card-type-stripe{position:absolute;left:0;top:0;bottom:0;width:3px;}
 .card-status-badges{position:absolute;top:6px;right:6px;display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
 .type-icon-badge{display:none;}
 
 /* card body — desktop */
-.card-body{padding:10px 16px;display:flex;align-items:center;gap:16px;}
+.card-body{padding:10px 16px;display:flex;align-items:center;gap:16px;background:#f0ede5;}
 .card-body-left{flex:1;}
-.card-name{font-size:13px;font-weight:500;line-height:1.3;margin-bottom:2px;color:#2a2520;}
+.card-name{font-size:13px;font-weight:500;line-height:1.3;margin-bottom:2px;color:#2a2520;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .card-sub{font-size:11px;color:#9a8f84;margin-bottom:5px;}
 .card-dice-row{display:inline-flex;align-items:center;gap:3px;margin-right:8px;}
 .card-footer{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-direction:column;text-align:right;}
@@ -80,7 +80,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .price-date{font-size:9px;color:#c0b8b0;display:block;}
 
 /* card status column */
-.card-status-col{padding:0 12px;display:flex;align-items:center;justify-content:center;border-left:1px solid #f0ede8;}
+.card-status-col{padding:0 12px;display:flex;align-items:center;justify-content:center;border-left:1px solid #e4dfd6;background:#f0ede5;}
 
 /* STATUS BADGES */
 .status-badge{font-size:9px;padding:2px 7px;border-radius:9px;font-weight:600;white-space:nowrap;}
@@ -103,7 +103,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .wine-type-section{margin-bottom:16px;}
   .card-img-area{width:80px;height:90px;flex-shrink:0;border-right:1px solid #f0ede8;border-radius:0;}
   .card-img-area img{max-height:72px;}
-  .card-body{flex:1;padding:9px 12px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:0;}
+  .card-body{flex:1;padding:9px 12px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:0;background:#f0ede5;}
   .card-body-left{width:100%;}
   .card-name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
   .card-footer{flex-direction:row;justify-content:space-between;align-items:center;width:100%;margin-top:6px;}
@@ -118,19 +118,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* Desktop popup: two columns */
 @media(min-width:641px){
   .modal{display:grid;grid-template-columns:180px 1fr;max-height:85vh;}
-  .modal-img-area{grid-row:1/3;width:180px;min-height:300px;height:auto;border-radius:14px 0 0 14px;border-right:1px solid #f0ede8;flex-direction:column;justify-content:center;padding:20px 14px;background:#fff;}
+  .modal-img-area{grid-row:1/3;width:180px;min-height:300px;height:auto;border-radius:14px 0 0 14px;border-right:1px solid #e4dfd6;flex-direction:column;justify-content:center;padding:20px 14px;background:#fff;}
   .modal-img-area img{max-height:200px;padding:0;cursor:zoom-in;}
   .img-btn-row{position:static;display:flex;gap:5px;margin-top:12px;justify-content:center;}
   .img-btn{font-size:11px;padding:4px 9px;border-radius:4px;border:1px solid #e4dfd6;background:#fff;color:#9a8f84;cursor:pointer;}
   .modal-type-badge{display:none;}
-  .modal-body{grid-column:2;padding:1rem 1.1rem .5rem;}
-  .modal-actions{grid-column:2;padding:.5rem 1.1rem 1rem;}
+  .modal-body{grid-column:2;padding:1rem 1.1rem .5rem;background:#f0ede5;}
+  .modal-actions{grid-column:2;padding:.5rem 1.1rem 1rem;background:#f0ede5;}
 }
 
 /* Mobile popup: single column */
 @media(max-width:640px){
   .modal{display:block;}
-  .modal-img-area{width:100%;height:220px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;}
+  .modal-img-area{width:100%;height:220px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#ffffff;}
   .modal-img-area img{max-height:200px;padding:8px;cursor:zoom-in;}
   .img-btn-row{position:absolute;bottom:9px;right:9px;}
   .img-btn{font-size:11px;padding:4px 9px;border-radius:20px;border:1px solid rgba(0,0,0,.15);background:rgba(255,255,255,.9);color:#5c5248;cursor:pointer;}
@@ -144,7 +144,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .modal-meta{font-size:11px;color:#9a8f84;margin-bottom:12px;}
 .detail-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;margin-bottom:10px;align-items:center;}
 .dl{color:#9a8f84;font-weight:500;}.dv{color:#2a2520;}
-.desc-text{font-size:12px;color:#7a6e66;line-height:1.65;margin:8px 0;border-top:1px solid #f0ede8;padding-top:8px;}
+.desc-text{font-size:12px;color:#6a5e56;line-height:1.65;margin:8px 0;border-top:1px solid #e4dfd6;padding-top:8px;}
 .tasting-label{font-size:10px;color:#9a8f84;margin-bottom:3px;margin-top:8px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;}
 textarea.tasting-note{width:100%;font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #e4dfd6;color:#2a2520;background:#f9f8f6;resize:vertical;min-height:55px;font-family:inherit;outline:none;}
 .stars6-edit{display:flex;gap:4px;margin:5px 0 10px;}
@@ -879,7 +879,7 @@ function renderModal(w, editMode=false){
 
   document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
-      <div class="modal-img-area" style="box-shadow:inset 0 0 30px rgba(${typeGlowRgb(w.type)},.3);background:#fff;">
+      <div class="modal-img-area" style="box-shadow:inset 0 0 32px rgba(${typeGlowRgb(w.type)},.45);background:#ffffff;">
         ${imgAreaHTML(w,200,true)}
         <div class="modal-type-badge">${typeIcon(w.type,18)}</div>
         ${imgBtns}
