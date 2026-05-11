@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Oppdater status</title></head>
+<body style="font-family:sans-serif;padding:2rem;max-width:500px;background:#0f0a0a;color:#fff;">
+<h2 style="color:#fff;margin-bottom:1rem;">🍷 Rydder opp statuser</h2>
+<div id="status" style="font-size:14px;color:rgba(255,255,255,.5)">Venter...</div>
+<script>
+const JSONBIN_ID  = '69ee057eaaba8821973c41c3';
+const JSONBIN_KEY = '$2a$10$zuD906ds8ajxjAlYn7GU7O.Jp2DJpBd1Ngsvpjxk0dcoTX1meswF2';
+const TS = Date.now() + 3600000;
+
+function log(msg,color='rgba(255,255,255,.5)'){
+  document.getElementById('status').innerHTML=`<span style="color:${color}">${msg}</span>`;
+}
+
+(async()=>{
+  log('⏳ Henter data fra JSONBin...');
+  try{
+    const r=await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`,
+      {headers:{'X-Access-Key':JSONBIN_KEY}});
+    if(!r.ok) throw new Error('Henting feilet: '+r.status);
+    const d=await r.json();
+    const wines=d.record.wines||d.record;
+    const order=d.record.order||wines.map(w=>w.id);
+
+    let changed=0;
+    wines.forEach(w=>{
+      if(w.status==='boring'||w.status==='dismissed'){
+        w.status='meh'; w.updatedAt=TS; changed++;
+      } else if(w.status==='pending'||w.status==='all'){
+        w.status=null; w.updatedAt=TS; changed++;
+      }
+    });
+
+    log(`⏳ ${changed} statuser endret — lagrer...`);
+    const putR=await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Access-Key':JSONBIN_KEY},
+      body:JSON.stringify({wines,order})
+    });
+    if(!putR.ok) throw new Error('Lagring feilet: '+putR.status);
+    log(`✅ Ferdig! ${changed} statuser oppdatert (boring/dismissed→meh, pending/all→null). Du kan lukke denne fanen.`,'#5DCAA5');
+  }catch(e){
+    log('❌ Feil: '+e.message,'#F09595');
+  }
+})();
+</script>
+</body></html>
