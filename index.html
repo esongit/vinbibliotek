@@ -65,12 +65,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* card image area — desktop */
 .card-img-area{position:relative;width:76px;height:88px;background:#ffffff;display:flex;align-items:center;justify-content:center;border-right:1px solid #e4dfd6;flex-shrink:0;}
 .card-img-area img{max-width:100%;max-height:76px;object-fit:contain;position:relative;z-index:1;}
-.card-type-stripe{position:absolute;left:0;top:0;bottom:0;width:3px;}
-.card-status-badges{position:absolute;top:6px;right:6px;display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
-.type-icon-badge{display:none;}
 
 /* card body — desktop */
-.card-body{padding:10px 16px;display:flex;align-items:center;gap:16px;background:#f0ede5;}
+.card-body{padding:10px 16px;display:flex;align-items:center;gap:16px;background:#ffffff;}
 .card-body-left{flex:1;}
 .card-name{font-size:13px;font-weight:500;line-height:1.3;margin-bottom:2px;color:#2a2520;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .card-sub{font-size:11px;color:#9a8f84;margin-bottom:5px;}
@@ -80,13 +77,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .price-date{font-size:9px;color:#c0b8b0;display:block;}
 
 /* card status column */
-.card-status-col{padding:0 12px;display:flex;align-items:center;justify-content:center;border-left:1px solid #e4dfd6;background:#f0ede5;}
+.card-status-col{padding:0 12px;display:flex;align-items:center;justify-content:center;border-left:1px solid #e4dfd6;background:#ffffff;}
 
 /* STATUS BADGES */
 .status-badge{font-size:9px;padding:2px 7px;border-radius:9px;font-weight:600;white-space:nowrap;}
 .badge-har{background:#e8f4e8;color:#2d6a2d;}
 .badge-bestill{background:#e6f0fb;color:#185fa5;}
 .badge-meh{background:#f0ede8;color:#9a8f84;}
+.badge-empty{background:#f7f4ee;color:#d4cec5;border:1px dashed #e4dfd6;}
 
 /* PROFILE CIRCLES in card */
 .profile-circles{display:flex;gap:6px;align-items:center;}
@@ -742,10 +740,6 @@ function render(){
   if(isCustom)initDrag();
 }
 
-function typeStripeColor(type){
-  const map={red:'#8B1A1A',white:'#b8960c',rose:'#c4506a',other:'#aaa'};
-  return map[type]||'#aaa';
-}
 function typeGlowRgb(type){
   const map={red:'139,26,26',white:'184,150,12',rose:'196,80,106',other:'150,150,150'};
   return map[type]||'150,150,150';
@@ -753,18 +747,27 @@ function typeGlowRgb(type){
 
 function cardHTML(w,draggable=false){
   const st=effectiveStatus(w);
-  const harBadge=st==='har'?'<span class="status-badge badge-har">Har</span>':'';
-  const bestillBadge=st==='bestill'?'<span class="status-badge badge-bestill">Bestill</span>':'';
-  const colBadge=(harBadge||bestillBadge)?harBadge+bestillBadge:'<span style="font-size:10px;color:#c0b8b0">—</span>';
+  // Always render both badges so layout is consistent; faded when status is not set.
+  // Meh wines get neither (the whole card is already dimmed via .meh class).
+  let colBadge;
+  if(st==='meh'){
+    colBadge='';
+  } else {
+    const harActive=st==='har';
+    const bestillActive=st==='bestill';
+    const harBadge=`<span class="status-badge ${harActive?'badge-har':'badge-empty'}">Har</span>`;
+    const bestillBadge=`<span class="status-badge ${bestillActive?'badge-bestill':'badge-empty'}">Bestill</span>`;
+    colBadge=`<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;">${harBadge}${bestillBadge}</div>`;
+  }
   const diceRow=w.expertScore?`<span class="card-dice-row">${diceSVG(w.expertScore,13)}<span style="font-size:9px;color:#9a8f84;font-weight:500;">${scoreTag(w)}</span></span>`:'';
   const profRow=profileCirclesHTML(w,true);
   const userStars=w.rating?`<span style="display:inline-flex;gap:1px;">${Array.from({length:6},(_,i)=>`<span style="font-size:10px;color:${i<w.rating?'#c8a830':'#e4dfd6'};">★</span>`).join('')}</span>`:'';
   const dragAttr=draggable?`draggable="true" data-id="${w.id}"`:'' ;
   const handle=draggable?`<div class="drag-handle" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);">⠿</div>`:'';
-  const stripe=`<div class="card-type-stripe" style="background:${typeStripeColor(w.type)}"></div>`;
+  const glow=`box-shadow:inset 0 0 32px rgba(${typeGlowRgb(w.type)},.45);`;
   return `<div class="wine-card${st==='meh'?' meh':''}" ${dragAttr} onclick="openModal(${w.id})" style="position:relative;">
     ${handle}
-    <div class="card-img-area">${stripe}${imgAreaHTML(w,76)}</div>
+    <div class="card-img-area" style="${glow}">${imgAreaHTML(w,76)}</div>
     <div class="card-body">
       <div class="card-body-left">
         <div class="card-name">${w.name}</div>
@@ -820,9 +823,13 @@ function openModal(id){
 function renderModal(w, editMode=false){
   const st=effectiveStatus(w);
   const tasted=hasTasted(w);
-  // status buttons — har/bestill toggles
-  const harBtn=st!=='meh'?`<button class="action-btn${st==='har'?' green':''}" onclick="toggleWineStatus(${w.id},'har')">${st==='har'?'✓ Har':'Har'}</button>`:'';
-  const bestillBtn=st!=='meh'?`<button class="action-btn${st==='bestill'?' blue':''}" onclick="toggleWineStatus(${w.id},'bestill')">${st==='bestill'?'✓ Bestill':'Bestill'}</button>`:'';
+  // Status buttons (har/bestill) — shown in both view and edit mode unless wine is "meh".
+  // In edit mode they get the .js-edit-status-btn class so markDirty can disable them
+  // while there are unsaved changes (toggleWineStatus → saveWine → renderModal would
+  // otherwise blow away the user's in-progress edits).
+  const statusBtnCls = editMode ? ' js-edit-status-btn' : '';
+  const harBtn=st!=='meh'?`<button class="action-btn${statusBtnCls}${st==='har'?' green':''}" onclick="toggleWineStatus(${w.id},'har')">${st==='har'?'✓ Har':'Har'}</button>`:'';
+  const bestillBtn=st!=='meh'?`<button class="action-btn${statusBtnCls}${st==='bestill'?' blue':''}" onclick="toggleWineStatus(${w.id},'bestill')">${st==='bestill'?'✓ Bestill':'Bestill'}</button>`:'';
   const imgBtns=`<div class="img-btn-row">
     <button class="img-btn" onclick="triggerImgUpload(${w.id})">📂 Endre foto</button>
     <button class="img-btn" onclick="findPhoto(${w.id})">🔍 Finn foto</button>
@@ -889,6 +896,7 @@ function renderModal(w, editMode=false){
   `;
 
   const actionBtns = editMode ? `
+    ${harBtn}${bestillBtn}
     <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${w.id})">Lagre</button>
     <button class="action-btn" onclick="cancelEdit(${w.id})">Avbryt</button>
     <button class="action-btn red" style="margin-left:auto;" onclick="confirmDelete(${w.id})">🗑 Slett vin</button>
@@ -1030,12 +1038,19 @@ function renderStars(){
 
 /* ── DIRTY DETECTION ── */
 function markDirty(){
-  const note=document.getElementById('modal-note')?.value||'';
+  if(isDirty) return; // already marked; nothing more to do
   const nameEl=document.getElementById('ed-name');
   if(!nameEl) return; // not in edit mode
   isDirty=true;
   const btn=document.getElementById('edit-save-btn');
   if(btn&&!btn.disabled) btn.className='action-btn green dirty';
+  // Disable status buttons in edit mode while there are unsaved changes
+  document.querySelectorAll('.js-edit-status-btn').forEach(b=>{
+    b.disabled=true;
+    b.style.opacity='.45';
+    b.style.cursor='not-allowed';
+    b.title='Lagre endringer først';
+  });
 }
 
 /* ── UPDATE PRICES FROM VMP ── */
