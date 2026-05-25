@@ -361,22 +361,24 @@ async function pushCloud(){
 }
 function mergeWines(local,cloud){
   // Two independent timestamps:
-  // updatedAt      = user data (note, rating, har, bestill, type, image)
+  // updatedAt      = user-editable data (everything except price fields)
   // priceUpdatedAt = price fields (price, priceDate)
-  // Each field group: newest timestamp wins — they never interfere
+  // Each field group: newest timestamp wins independently.
   const map={};
   cloud.forEach(w=>map[w.id]={...w});
   local.forEach(w=>{
     if(!map[w.id]){map[w.id]={...w};return;}
     const c=map[w.id];
-    // merge user data fields
+    // User data: when local is newer, overlay everything from local except price fields.
+    // Using Object.assign (rather than an explicit field list) means any new field added
+    // to a wine automatically participates in the merge — no maintenance burden.
     if((w.updatedAt||0)>=(c.updatedAt||0)){
-      c.note=w.note; c.rating=w.rating; c.har=w.har; c.bestill=w.bestill;
-      c.type=w.type; c.localImg=w.localImg; c.updatedAt=w.updatedAt;
-      // also strip legacy status if local has been migrated
+      const {price, priceDate, priceUpdatedAt, ...userData} = w;
+      Object.assign(c, userData);
+      // Strip legacy w.status if local has been migrated (cloud might still have it)
       if(!('status' in w)) delete c.status;
     }
-    // merge price fields
+    // Price fields: merged independently via priceUpdatedAt
     if((w.priceUpdatedAt||0)>=(c.priceUpdatedAt||0)){
       c.price=w.price; c.priceDate=w.priceDate; c.priceUpdatedAt=w.priceUpdatedAt;
     }
@@ -440,8 +442,8 @@ async function saveWine(wine){
   try{await syncToCloud({forcePush:true});}
   catch(e){/* badge already reflects the error */}
 }
-window.addEventListener('online',()=>syncToCloud());
-window.addEventListener('offline',()=>setSyncBadge('wait','⏳ Offline'));
+// Note: no window 'online'/'offline' listeners. Mobile browsers fire these spuriously
+// (esp. during pull-to-refresh). Badge is updated only by actual sync attempts.
 
 /* ── CUSTOM ORDER ── */
 function ensureOrder(){
@@ -907,17 +909,20 @@ function renderModal(w, editMode=false){
   }
 }
 
-/* ── PHOTO FUNCTIONS ── */
+/* ── PHOTO FUNCTIONS ──
+ * Image changes in edit mode are PENDING — they mutate wine.localImg in memory but
+ * don't save until the user clicks Lagre. The original image is snapshotted in
+ * editOriginals when entering edit mode so cancelEdit / dismissConfirmClose can revert.
+ */
 function triggerImgUpload(id){
   document.getElementById('img-upload-'+id)?.click();
 }
 function handleImgUpload(event,id){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
-  reader.onload=async(e)=>{
-    // resize to max 800px width
+  reader.onload=(e)=>{
     const img=new Image();
-    img.onload=async()=>{
+    img.onload=()=>{
       const MAX=800;
       let w=img.width,h=img.height;
       if(w>MAX){h=Math.round(h*(MAX/w));w=MAX;}
@@ -925,30 +930,94 @@ function handleImgUpload(event,id){
       canvas.getContext('2d').drawImage(img,0,0,w,h);
       const base64=canvas.toDataURL('image/jpeg',0.85);
       const wine=wines.find(x=>x.id===id);if(!wine)return;
+      ensureImgSnapshot(wine);
       wine.localImg=base64;
-      await saveWine(wine);
-      renderModal(wine);
+      rerenderEditModePreservingForm(wine);
+      markDirtyForce();
     };
     img.src=e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-/* ── EDIT MODE ── */
+/* ── EDIT MODE ──
+ * editOriginals[wineId] = {localImg: original} stored on entry to edit mode (or first
+ * image change), used by cancel/dismiss to revert.
+ */
+let editOriginals = {};
+
+function ensureImgSnapshot(wine){
+  if(!editOriginals[wine.id]){
+    editOriginals[wine.id] = {localImg: 'localImg' in wine ? wine.localImg : undefined};
+  }
+}
+function revertImgChange(id){
+  const orig=editOriginals[id]; if(!orig) return;
+  const w=wines.find(x=>x.id===id);
+  if(w){
+    if(orig.localImg===undefined) delete w.localImg;
+    else w.localImg=orig.localImg;
+  }
+  delete editOriginals[id];
+}
+
+/* Re-render the modal in edit mode while preserving any unsaved field values in the form.
+ * Needed when something outside the form changes (image upload/remove) and the modal
+ * needs to reflect that without losing the user's in-progress text edits. */
+const EDIT_FIELD_IDS = ['ed-name','ed-grape','ed-region','ed-type','ed-price','ed-taste','ed-food','ed-desc','ed-score','ed-src','ed-vmpid','ed-vivino','modal-note'];
+function captureEditFormValues(){
+  if(!document.getElementById('ed-name')) return null;
+  const out={};
+  EDIT_FIELD_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) out[id]=el.value;
+  });
+  out._rating=editRating;
+  return out;
+}
+function restoreEditFormValues(captured){
+  if(!captured) return;
+  EDIT_FIELD_IDS.forEach(id=>{
+    if(!(id in captured)) return;
+    const el=document.getElementById(id);
+    if(el) el.value=captured[id];
+  });
+  if('_rating' in captured){ editRating=captured._rating; renderStars(); }
+}
+function rerenderEditModePreservingForm(w){
+  const captured=captureEditFormValues();
+  renderModal(w, true);
+  restoreEditFormValues(captured);
+}
+
+/* Force-set the dirty flag and visual indicator (markDirty has an early-return for already-dirty).
+ * Used when state changes outside normal input events (e.g. image upload). */
+function markDirtyForce(){
+  isDirty=true;
+  const btn=document.getElementById('edit-save-btn');
+  if(btn&&!btn.disabled) btn.className='action-btn green dirty';
+}
+
 function openEditMode(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
+  ensureImgSnapshot(w);
   renderModal(w,true);
 }
 function cancelEdit(id){
+  revertImgChange(id);
   isDirty=false;
   const w=wines.find(x=>x.id===id);if(!w)return;
   renderModal(w,false);
 }
-async function removeLocalImg(id){
+function removeLocalImg(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
-  delete w.localImg;await saveWine(w);renderModal(w);
+  ensureImgSnapshot(w);
+  delete w.localImg;
+  rerenderEditModePreservingForm(w);
+  markDirtyForce();
 }
-async function saveEdit(wineId){
+
+async function saveEdit(wineId, closeAfter=false){
   const w=wines.find(x=>x.id===wineId);if(!w)return;
   // Show "Lagrer..." feedback
   const btn=document.getElementById('edit-save-btn');
@@ -957,7 +1026,7 @@ async function saveEdit(wineId){
   const fv=fieldId=>document.getElementById(fieldId)?.value.trim();
   const score=fv('ed-score');
   const oldPrice=w.price;
-  // Use ?? '' so empty string is allowed (user can clear a field)
+  // Use || w.x so empty string falls back to existing value (no clearing required fields)
   w.name     = fv('ed-name')   || w.name;
   w.grape    = fv('ed-grape')  || w.grape;
   w.region   = fv('ed-region') || w.region;
@@ -972,14 +1041,23 @@ async function saveEdit(wineId){
   const vmpNew=fv('ed-vmpid'); w.vmpId=vmpNew||null;
   const vivRaw=fv('ed-vivino');
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);w.vivinoHash=m?m[1]:vivRaw;}else w.vivinoHash=null;
-  // note: use raw value (not trimmed) to preserve whitespace in notes
+  // note: use raw value (not trimmed) to preserve whitespace
   w.note   = document.getElementById('modal-note')?.value ?? w.note;
   w.rating = editRating;
   // if price was manually edited, update priceUpdatedAt
   if(newPrice && newPrice!==oldPrice) w.priceUpdatedAt=Date.now();
+  // Commit image change (snapshot no longer needed)
+  delete editOriginals[wineId];
   isDirty=false;
-  await saveWine(w);
-  doCloseModal();
+  // Ensure "Lagrer..." is visible for at least ~600ms so the user can perceive the action,
+  // even if save completes faster than that
+  const minFeedback=new Promise(r=>setTimeout(r,600));
+  await Promise.all([saveWine(w), minFeedback]);
+  if(closeAfter){
+    doCloseModal();
+  } else {
+    renderModal(w, false); // stay in modal, switch to view mode showing saved state
+  }
 }
 
 /* ── WINE STATUS TOGGLE ──
@@ -1119,6 +1197,7 @@ function doCloseModalNoHistory(){
   const cc=document.getElementById('close-confirm');if(cc)cc.remove();
   const dc=document.getElementById('delete-confirm');if(dc)dc.remove();
   selectedId=null; isDirty=false;
+  editOriginals={};
 }
 function doCloseModal(){
   // Programmatic close (save/delete/dismiss): clear DOM and pop all our overlay entries
@@ -1186,14 +1265,15 @@ function confirmClose(callback){
 function dismissConfirmClose(){
   // User chose to discard changes — close confirm overlay AND modal together.
   const el=document.getElementById('close-confirm');if(el)el.remove();
+  if(selectedId!==null) revertImgChange(selectedId); // revert any pending image change
   isDirty=false;
-  doCloseModal(); // cleans DOM and pops history (lvl=2 → back 2)
+  doCloseModal(); // cleans DOM and pops history
 }
 function confirmSaveClose(){
   // User chose to save and close. Remove confirm dialog manually so its DOM is gone before
   // saveEdit re-renders or doCloseModal runs.
   const el=document.getElementById('close-confirm');if(el)el.remove();
-  if(selectedId!==null) saveEdit(selectedId); // saveEdit ends by calling doCloseModal
+  if(selectedId!==null) saveEdit(selectedId, true); // closeAfter=true (user was trying to close)
 }
 
 function closeModal(e){
