@@ -345,8 +345,13 @@ function saveLocal(){
 async function fetchCloud(){
   const url=getBinUrl(),key=getAccessKey();
   if(!url||!key)throw new Error('Ikke konfigurert');
-  const res=await fetch(url+'/latest',{headers:{'X-Access-Key':key}});
-  if(!res.ok)throw new Error('HTTP '+res.status);
+  let res;
+  try{ res=await fetch(url+'/latest',{headers:{'X-Access-Key':key}}); }
+  catch(e){ throw new Error('FETCH nettverk: '+e.message); }
+  if(!res.ok){
+    let body=''; try{body=(await res.text()).slice(0,80);}catch(e){}
+    throw new Error('FETCH HTTP '+res.status+(body?' '+body:''));
+  }
   const data=await res.json();
   // support both {wines,order} and plain array
   if(data.record&&data.record.wines){return {wines:data.record.wines, order:data.record.order||[]};}
@@ -356,8 +361,15 @@ async function pushCloud(){
   const url=getBinUrl(),key=getAccessKey();
   if(!url||!key)throw new Error('Ikke konfigurert');
   const payload={wines,order:customOrder};
-  const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json','X-Access-Key':key},body:JSON.stringify(payload)});
-  if(!res.ok)throw new Error('HTTP '+res.status);
+  const body=JSON.stringify(payload);
+  const kb=Math.round(body.length/1024);
+  let res;
+  try{ res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json','X-Access-Key':key},body}); }
+  catch(e){ throw new Error('PUSH nettverk ('+kb+'kB): '+e.message); }
+  if(!res.ok){
+    let rbody=''; try{rbody=(await res.text()).slice(0,80);}catch(e){}
+    throw new Error('PUSH HTTP '+res.status+' ('+kb+'kB)'+(rbody?' '+rbody:''));
+  }
 }
 function mergeWines(local,cloud){
   // Two independent timestamps:
@@ -402,6 +414,7 @@ function syncToCloud(opts={}){
 async function doSync({forcePush=false, postMergeFilter=null}={}){
   if(!navigator.onLine){setSyncBadge('wait','⏳ Offline');return;}
   setSyncBadge('wait','⟳ Synker...');
+  const shortErr=e=>{console.error('[sync error]', e); return '⚠ '+String(e.message||e).slice(0,60);};
   let cloud;
   try{
     cloud=await fetchCloud();
@@ -409,9 +422,9 @@ async function doSync({forcePush=false, postMergeFilter=null}={}){
     // Fetch failed — fall back to plain push if caller insists, else surface error
     if(forcePush){
       try{await pushCloud();setSyncBadge('ok','✓ Synkronisert');return;}
-      catch(e){setSyncBadge('err','⚠ Offline');throw e;}
+      catch(e){setSyncBadge('err',shortErr(e));throw e;}
     }
-    setSyncBadge('err','⚠ Offline');
+    setSyncBadge('err',shortErr(fetchErr));
     throw fetchErr;
   }
   let merged=mergeWines(wines,cloud.wines);
@@ -428,7 +441,7 @@ async function doSync({forcePush=false, postMergeFilter=null}={}){
   const localSnapshot=JSON.stringify({wines,order:customOrder});
   if(forcePush || localSnapshot!==cloudSnapshot){
     try{await pushCloud();}
-    catch(e){setSyncBadge('err','⚠ Offline');throw e;}
+    catch(e){setSyncBadge('err',shortErr(e));throw e;}
   }
   setSyncBadge('ok','✓ Synkronisert');
 }
