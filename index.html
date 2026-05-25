@@ -451,12 +451,21 @@ function migrateWine(w){
 function loadLocal(){
   try{
     const r=localStorage.getItem(LS_KEY);wines=r?JSON.parse(r):[];
-    // Bump updatedAt on any wine that was migrated so the migrated version wins
-    // over the old cloud copy at next sync.
-    const now=Date.now();
+    // Migrate fields. Migration is idempotent and re-runs on every sync via
+    // doSync's merged.forEach(migrateWine), so we don't bump updatedAt here —
+    // mergeWines uses >= so local wins on tie anyway.
     let anyChanged=false;
+    wines.forEach(w=>{ if(migrateWine(w)) anyChanged=true; });
+    // localImg auto-rens: any wine that still carries a base64 image gets it
+    // stripped. Bump updatedAt only on those specific wines so the removal
+    // propagates to cloud at next sync without flattening all timestamps.
+    const now=Date.now();
     wines.forEach(w=>{
-      if(migrateWine(w)){ w.updatedAt=now; anyChanged=true; }
+      if(w && w.localImg){
+        delete w.localImg;
+        w.updatedAt=now;
+        anyChanged=true;
+      }
     });
     if(anyChanged) saveLocal();
     const o=localStorage.getItem(LS_ORDER);customOrder=o?JSON.parse(o):[];
@@ -766,7 +775,6 @@ function duplicateGoToWine(id){
   // Open the existing wine's modal in edit mode
   selectedId=id;
   const w=wines.find(x=>x.id===id); if(!w) return;
-  ensureImgSnapshot(w);
   editRating=w.rating||0;
   renderModal(w, true);
   pushOverlay();
@@ -970,7 +978,10 @@ function getFiltered(){
     else{va=a.id;vb=b.id;}
     if(va<vb)return sortAsc?-1:1;
     if(va>vb)return sortAsc?1:-1;
-    return 0;
+    // Tiebreaker: use id so wines with identical primary value get a stable
+    // order. Multiply by sort direction so the toggle still flips visibly
+    // when most/all values are equal (e.g. "Sist endret" right after migration).
+    return (a.id-b.id)*(sortAsc?1:-1);
   });
   return list;
 }
@@ -1123,11 +1134,6 @@ function renderModal(w, editMode=false){
       <div style="flex:1;"><div style="${IL}">VMP-nr</div><input id="ed-vmpid" value="${w.vmpId||''}" style="${IS}"/></div>
       <div style="flex:1;"><div style="${IL}">Vivino-hash</div><input id="ed-vivino" value="${w.vivinoHash||''}" style="${IS}"/></div>
     </div>
-    <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <button type="button" class="action-btn" onclick="triggerImgUpload(${w.id})" style="font-size:11px;">📂 Endre foto</button>
-      <input type="file" id="img-upload-${w.id}" accept="image/*" style="display:none;" onchange="handleImgUpload(event,${w.id})"/>
-      ${w.localImg?`<span style="font-size:11px;color:#888;">📷 Egenlastet bilde. <button onclick="removeLocalImg(${w.id})" style="font-size:11px;color:#a32d2d;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">Fjern</button></span>`:''}
-    </div>
     <div style="${IL}margin-top:4px;">Min vurdering (1–6 stjerner)</div>
     <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
     <div style="${IL}">Mitt notat</div>
@@ -1187,60 +1193,8 @@ function renderModal(w, editMode=false){
   }
 }
 
-/* ── PHOTO FUNCTIONS ──
- * Image changes in edit mode are PENDING — they mutate wine.localImg in memory but
- * don't save until the user clicks Lagre. The original image is snapshotted in
- * editOriginals when entering edit mode so cancelEdit / dismissConfirmClose can revert.
- */
-function triggerImgUpload(id){
-  document.getElementById('img-upload-'+id)?.click();
-}
-function handleImgUpload(event,id){
-  const file=event.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=(e)=>{
-    const img=new Image();
-    img.onload=()=>{
-      const MAX=800;
-      let w=img.width,h=img.height;
-      if(w>MAX){h=Math.round(h*(MAX/w));w=MAX;}
-      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      const base64=canvas.toDataURL('image/jpeg',0.85);
-      const wine=wines.find(x=>x.id===id);if(!wine)return;
-      ensureImgSnapshot(wine);
-      wine.localImg=base64;
-      rerenderEditModePreservingForm(wine);
-      markDirtyForce();
-    };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-/* ── EDIT MODE ──
- * editOriginals[wineId] = {localImg: original} stored on entry to edit mode (or first
- * image change), used by cancel/dismiss to revert.
- */
-let editOriginals = {};
-
-function ensureImgSnapshot(wine){
-  if(!editOriginals[wine.id]){
-    editOriginals[wine.id] = {localImg: 'localImg' in wine ? wine.localImg : undefined};
-  }
-}
-function revertImgChange(id){
-  const orig=editOriginals[id]; if(!orig) return;
-  const w=wines.find(x=>x.id===id);
-  if(w){
-    if(orig.localImg===undefined) delete w.localImg;
-    else w.localImg=orig.localImg;
-  }
-  delete editOriginals[id];
-}
-
 /* Re-render the modal in edit mode while preserving any unsaved field values in the form.
- * Needed when something outside the form changes (image upload/remove) and the modal
+ * Needed when something outside the form changes and the modal
  * needs to reflect that without losing the user's in-progress text edits. */
 const EDIT_FIELD_IDS = ['ed-name','ed-grape','ed-region','ed-type','ed-price','ed-taste','ed-desc','ed-score','ed-src','ed-vmpid','ed-vivino','modal-note'];
 /* Read selected food chips from a chip container by id. Returns array of canonical names. */
@@ -1285,37 +1239,15 @@ function restoreEditFormValues(captured){
     if(container) container.innerHTML=foodChipsHTML(captured._food,'toggleEditFoodChip');
   }
 }
-function rerenderEditModePreservingForm(w){
-  const captured=captureEditFormValues();
-  renderModal(w, true);
-  restoreEditFormValues(captured);
-}
-
-/* Force-set the dirty flag and visual indicator (markDirty has an early-return for already-dirty).
- * Used when state changes outside normal input events (e.g. image upload). */
-function markDirtyForce(){
-  isDirty=true;
-  const btn=document.getElementById('edit-save-btn');
-  if(btn&&!btn.disabled) btn.className='action-btn green dirty';
-}
 
 function openEditMode(id){
   const w=wines.find(x=>x.id===id);if(!w)return;
-  ensureImgSnapshot(w);
   renderModal(w,true);
 }
 function cancelEdit(id){
-  revertImgChange(id);
   isDirty=false;
   const w=wines.find(x=>x.id===id);if(!w)return;
   renderModal(w,false);
-}
-function removeLocalImg(id){
-  const w=wines.find(x=>x.id===id);if(!w)return;
-  ensureImgSnapshot(w);
-  delete w.localImg;
-  rerenderEditModePreservingForm(w);
-  markDirtyForce();
 }
 
 async function saveEdit(wineId, closeAfter=false){
@@ -1347,8 +1279,6 @@ async function saveEdit(wineId, closeAfter=false){
   w.rating = editRating;
   // if price was manually edited, update priceUpdatedAt
   if(newPrice && newPrice!==oldPrice) w.priceUpdatedAt=Date.now();
-  // Commit image change (snapshot no longer needed)
-  delete editOriginals[wineId];
   isDirty=false;
   // Ensure "Lagrer..." is visible for at least ~600ms so the user can perceive the action,
   // even if save completes faster than that
@@ -1509,7 +1439,6 @@ function doCloseModalNoHistory(){
   const cc=document.getElementById('close-confirm');if(cc)cc.remove();
   const dc=document.getElementById('delete-confirm');if(dc)dc.remove();
   selectedId=null; isDirty=false;
-  editOriginals={};
 }
 function doCloseModal(){
   // Programmatic close (save/delete/dismiss): clear DOM and pop all our overlay entries
@@ -1577,7 +1506,6 @@ function confirmClose(callback){
 function dismissConfirmClose(){
   // User chose to discard changes — close confirm overlay AND modal together.
   const el=document.getElementById('close-confirm');if(el)el.remove();
-  if(selectedId!==null) revertImgChange(selectedId); // revert any pending image change
   isDirty=false;
   doCloseModal(); // cleans DOM and pops history
 }
