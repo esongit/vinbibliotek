@@ -234,6 +234,7 @@ code{background:#f0ede8;padding:1px 4px;border-radius:3px;font-size:10px;color:#
       <button class="toggle-btn" id="tb-white" onclick="toggleType('white')">🥂 Hvit</button>
       <button class="toggle-btn" id="tb-rose"  onclick="toggleType('rose')">🌸 Rosé</button>
       <button class="toggle-btn" id="tb-other" onclick="toggleType('other')">🫙 Andre</button>
+      <button class="toggle-btn" id="tb-food"  onclick="openFoodFilter()">🍽 Mat</button>
     </div>
     <div class="toolbar-row">
       <span class="toolbar-label">Status</span>
@@ -244,16 +245,16 @@ code{background:#f0ede8;padding:1px 4px;border-radius:3px;font-size:10px;color:#
     <div class="toolbar-row">
       <span class="toolbar-label">Sorter</span>
       <select class="sort-select" id="sort-by" onchange="onSortChange()">
+        <option value="recent" selected>Sist endret</option>
         <option value="custom">Egendefinert</option>
         <option value="name">Alfabetisk</option>
         <option value="price">Pris</option>
         <option value="expert">Terningkast</option>
         <option value="rating">Mine stjerner</option>
-        <option value="recent">Sist endret</option>
-      <option value="fylde">Fylde</option>
-      <option value="friskhet">Friskhet</option>
-      <option value="sodme">Sødme</option>
-      <option value="garvestoff">Garvestoff</option>
+        <option value="fylde">Fylde</option>
+        <option value="friskhet">Friskhet</option>
+        <option value="sodme">Sødme</option>
+        <option value="garvestoff">Garvestoff</option>
       </select>
       <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Bytt retning">↓</button>
       <button class="toggle-btn" onclick="resetFilters()">✕ Nullstill</button>
@@ -286,13 +287,106 @@ let wines=[];
 let customOrder=[]; // array of wine ids in custom order
 let activeTypes=new Set();
 let activeStatuses=new Set(['alle']); // default filter: show all wines
-let sortBy='custom';
+let activeFoods=new Set(); // selected food categories for filter (AND-logic)
+let sortBy='recent';
 let sortAsc=false; // false = descending for most fields
 let showManual=false;
 let selectedId=null;
 let editRating=0;
 let dragSrcId=null;
 let isDirty=false;
+
+/* ── FOOD CATEGORIES (from Vinmonopolet) ── */
+const KNOWN_FOODS = [
+  'Aperitiff/avec','Småvilt og fugl','Storvilt','Storfe','Lam og sau','Lam',
+  'And','Svinekjøtt','Lyst kjøtt','Fisk','Skalldyr','Sushi/sashimi','Ost',
+  'Pizza/pasta','Bbq/grillmat','Spekemat','Salat','Krydret/asiatisk/spicy',
+  'Dessert, kake, frukt'
+];
+// Aliases for smart migration of legacy string food data. Lowercase keys.
+// Longer/more specific entries listed first so they win the greedy match.
+const FOOD_ALIASES = [
+  ['lam og sau', 'Lam og sau'],
+  ['småvilt og fugl', 'Småvilt og fugl'],
+  ['krydret/asiatisk/spicy', 'Krydret/asiatisk/spicy'],
+  ['dessert, kake, frukt', 'Dessert, kake, frukt'],
+  ['lyst kjøtt', 'Lyst kjøtt'],
+  ['sushi/sashimi', 'Sushi/sashimi'],
+  ['aperitiff/avec', 'Aperitiff/avec'],
+  ['pizza/pasta', 'Pizza/pasta'],
+  ['bbq/grillmat', 'Bbq/grillmat'],
+  ['aperitiff', 'Aperitiff/avec'],
+  ['aperitif', 'Aperitiff/avec'],
+  ['avec', 'Aperitiff/avec'],
+  ['sushi', 'Sushi/sashimi'],
+  ['sashimi', 'Sushi/sashimi'],
+  ['pizza', 'Pizza/pasta'],
+  ['pasta', 'Pizza/pasta'],
+  ['bbq', 'Bbq/grillmat'],
+  ['grill', 'Bbq/grillmat'],
+  ['grillmat', 'Bbq/grillmat'],
+  ['krydret', 'Krydret/asiatisk/spicy'],
+  ['asiatisk', 'Krydret/asiatisk/spicy'],
+  ['spicy', 'Krydret/asiatisk/spicy'],
+  ['dessert', 'Dessert, kake, frukt'],
+  ['kake', 'Dessert, kake, frukt'],
+  ['frukt', 'Dessert, kake, frukt'],
+  ['salater', 'Salat'],
+  ['salat', 'Salat'],
+  ['oster', 'Ost'],
+  ['ost', 'Ost'],
+  ['fisk', 'Fisk'],
+  ['skalldyr', 'Skalldyr'],
+  ['storfe', 'Storfe'],
+  ['storvilt', 'Storvilt'],
+  ['svinekjøtt', 'Svinekjøtt'],
+  ['svin', 'Svinekjøtt'],
+  ['spekemat', 'Spekemat'],
+  ['lam', 'Lam'],
+  ['and', 'And'],
+].sort((a,b) => b[0].length - a[0].length);
+
+/* Convert a legacy food string (or array) into a deduplicated array of canonical
+ * categories. Unknown tokens are dropped. Used by migrateWine and VMP-import. */
+function migrateFood(input){
+  if(Array.isArray(input)){
+    return Array.from(new Set(
+      input.map(v=>{
+        const norm=String(v).toLowerCase().trim();
+        const direct=KNOWN_FOODS.find(k=>k.toLowerCase()===norm);
+        if(direct) return direct;
+        const alias=FOOD_ALIASES.find(([from])=>from===norm);
+        return alias?alias[1]:null;
+      }).filter(Boolean)
+    ));
+  }
+  if(!input||typeof input!=='string') return [];
+  let working=' '+input.toLowerCase().trim().replace(/\s+/g,' ')+' ';
+  const found=new Set();
+  for(const [alias,canonical] of FOOD_ALIASES){
+    const escaped=alias.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const re=new RegExp(`(^|[\\s,;·•])${escaped}($|[\\s,;·•])`,'i');
+    if(re.test(working)){
+      found.add(canonical);
+      working=working.replace(new RegExp(`(^|[\\s,;·•])${escaped}($|[\\s,;·•])`,'gi'),' $1$2 ');
+    }
+  }
+  return Array.from(found);
+}
+
+/* Render chip grid for food selection. Used in edit mode, add form and food filter overlay.
+ * containerId = DOM id of the host element. onClickFn = name of global toggle handler. */
+function foodChipsHTML(selected, onClickFn){
+  const sel=new Set(selected||[]);
+  return KNOWN_FOODS.map(f=>{
+    const isOn=sel.has(f);
+    const style=isOn
+      ? 'background:#8B1A1A;color:#fff;border-color:#8B1A1A;'
+      : 'background:#fff;color:#5c5248;border-color:#e4dfd6;';
+    return `<button type="button" class="food-chip" data-food="${f.replace(/"/g,'&quot;')}" data-on="${isOn?'1':'0'}" onclick="${onClickFn}(this)"
+      style="font-size:11px;padding:5px 11px;border-radius:20px;border:1px solid;cursor:pointer;font-family:inherit;${style}">${f}</button>`;
+  }).join('');
+}
 
 /* ── SETUP ── */
 function showSetupScreen(){document.getElementById('app-root').style.display='none';document.getElementById('setup-screen').style.display='flex';}
@@ -322,20 +416,49 @@ function openSettings(){
 /* ── SYNC ── */
 function setSyncBadge(s,t){const el=document.getElementById('sync-badge');if(!el)return;el.className='sync-status sync-'+s;el.textContent=t;}
 
-/* Migrate legacy w.status field → independent booleans w.har / w.bestill.
- * Old values 'meh', 'boring', 'dismissed', 'pending', 'all' are dropped silently. */
+/* Migrate legacy fields:
+ *  - w.status (string) → w.har / w.bestill (booleans). Old 'meh' etc. dropped.
+ *  - w.food (string) → w.food (array of canonical categories).
+ * Returns true if any field was actually changed (so caller can mark for resync). */
 function migrateWine(w){
-  if(!w||!w.status) return w;
-  if(w.status==='har') w.har=true;
-  else if(w.status==='bestill') w.bestill=true;
-  delete w.status;
-  return w;
+  if(!w) return false;
+  let changed=false;
+  // Legacy status field
+  if(w.status){
+    if(w.status==='har') w.har=true;
+    else if(w.status==='bestill') w.bestill=true;
+    delete w.status;
+    changed=true;
+  }
+  // Legacy food string → array
+  if(typeof w.food==='string'){
+    w.food=migrateFood(w.food);
+    changed=true;
+  } else if(!Array.isArray(w.food)){
+    if(w.food!=null){ w.food=[]; changed=true; }
+    else if(w.food===undefined){ w.food=[]; /* not really a change, just normalising */ }
+  } else {
+    // Already array — re-filter against canonical list (handles upstream changes)
+    const cleaned=migrateFood(w.food);
+    if(JSON.stringify(cleaned)!==JSON.stringify(w.food)){
+      w.food=cleaned;
+      changed=true;
+    }
+  }
+  return changed;
 }
 
 function loadLocal(){
   try{
     const r=localStorage.getItem(LS_KEY);wines=r?JSON.parse(r):[];
-    wines.forEach(migrateWine);
+    // Bump updatedAt on any wine that was migrated so the migrated version wins
+    // over the old cloud copy at next sync.
+    const now=Date.now();
+    let anyChanged=false;
+    wines.forEach(w=>{
+      if(migrateWine(w)){ w.updatedAt=now; anyChanged=true; }
+    });
+    if(anyChanged) saveLocal();
     const o=localStorage.getItem(LS_ORDER);customOrder=o?JSON.parse(o):[];
   }catch(e){wines=[];customOrder=[];}
 }
@@ -506,13 +629,148 @@ function toggleStatus(s){
   }
   updateToolbar();render();
 }
-function resetFilters(){activeTypes.clear();activeStatuses.clear();activeStatuses.add('alle');document.getElementById('sort-by').value='custom';sortBy='custom';sortAsc=false;document.getElementById('sort-dir-btn').textContent='↓';updateToolbar();render();}
+function resetFilters(){
+  activeTypes.clear();
+  activeStatuses.clear();
+  activeStatuses.add('alle');
+  activeFoods.clear();
+  // Clear search input + hide its ✕ button
+  const searchEl=document.getElementById('search');
+  if(searchEl) searchEl.value='';
+  const clearBtn=document.getElementById('search-clear');
+  if(clearBtn) clearBtn.style.display='none';
+  // Default sort = "Sist endret", descending
+  document.getElementById('sort-by').value='recent';
+  sortBy='recent';
+  sortAsc=false;
+  document.getElementById('sort-dir-btn').textContent='↓';
+  updateToolbar();
+  render();
+}
 function updateToolbar(){
   ['red','white','rose','other'].forEach(t=>{const b=document.getElementById('tb-'+t);b.className='toggle-btn'+(activeTypes.has(t)?' active-type-'+t:'');});
   ['alle','har','bestill'].forEach(s=>{const b=document.getElementById('tb-'+s);if(b)b.className='toggle-btn'+(activeStatuses.has(s)?' active-status':'');});
+  // Food filter button: show count when active, highlight when any selected
+  const foodBtn=document.getElementById('tb-food');
+  if(foodBtn){
+    const n=activeFoods.size;
+    foodBtn.className='toggle-btn'+(n>0?' active-status':'');
+    foodBtn.textContent=n>0?`🍽 Mat (${n})`:'🍽 Mat';
+  }
 }
 function onSortChange(){sortBy=document.getElementById('sort-by').value;render();}
 function toggleSortDir(){sortAsc=!sortAsc;document.getElementById('sort-dir-btn').textContent=sortAsc?'↑':'↓';render();}
+
+/* ── FOOD FILTER POPUP ── */
+function openFoodFilter(){
+  // Remove any existing overlay first
+  const existing=document.getElementById('food-filter-overlay');
+  if(existing){ existing.remove(); return; }
+  pushOverlay();
+  const overlay=document.createElement('div');
+  overlay.id='food-filter-overlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:1500;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,0.4);';
+  overlay.onclick=(e)=>{ if(e.target===overlay) closeFoodFilter(false); };
+  overlay.innerHTML=`
+    <div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.22);padding:1.5rem;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;">
+      <div style="font-size:16px;font-weight:600;color:#2a2520;margin-bottom:4px;">🍽 Filtrer på mat</div>
+      <div style="font-size:11px;color:#9a8f84;margin-bottom:14px;">Velg én eller flere matkategorier. Viser kun viner som passer til <strong>alle</strong> valgte.</div>
+      <div id="food-filter-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;">
+        ${foodChipsHTML(Array.from(activeFoods), 'toggleFilterFoodChip')}
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+        <button class="action-btn" onclick="clearFoodFilter()" style="font-size:12px;">Tøm valg</button>
+        <button class="action-btn" onclick="closeFoodFilter(false)" style="font-size:12px;">Avbryt</button>
+        <button class="action-btn green" onclick="closeFoodFilter(true)" style="font-size:12px;">Bruk filter</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function clearFoodFilter(){
+  const container=document.getElementById('food-filter-chips');
+  if(container) container.innerHTML=foodChipsHTML([], 'toggleFilterFoodChip');
+}
+function closeFoodFilter(apply){
+  if(apply){
+    const selected=readFoodChips('food-filter-chips');
+    activeFoods=new Set(selected);
+    updateToolbar();
+    render();
+  }
+  const el=document.getElementById('food-filter-overlay');
+  if(el) el.remove();
+  // Pop history if pushOverlay added one
+  popOverlayIfTop();
+}
+
+/* Pop the last overlay-history entry if it's still on top. Safe no-op otherwise. */
+function popOverlayIfTop(){
+  if(overlayDepth>0){
+    overlayDepth--;
+    inProgrammaticHistory=true;
+    history.back();
+    setTimeout(()=>{ inProgrammaticHistory=false; }, 50);
+  }
+}
+
+/* ── DUPLICATE WINE DIALOG ──
+ * Shown when user tries to add a wine that already exists in the database.
+ * Three actions: go to existing (in edit mode), save as duplicate, or cancel. */
+function showDuplicateDialog(existing, onSaveDuplicate){
+  const existingDialog=document.getElementById('duplicate-dialog');
+  if(existingDialog) existingDialog.remove();
+  pushOverlay();
+  const overlay=document.createElement('div');
+  overlay.id='duplicate-dialog';
+  overlay.style.cssText='position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,0.35);';
+  overlay.innerHTML=`
+    <div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.22);padding:1.5rem;max-width:340px;width:100%;text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">🍷</div>
+      <div style="font-size:15px;font-weight:600;color:#2a2520;margin-bottom:6px;">Vinen finnes allerede</div>
+      <div style="font-size:12px;color:#6a5e56;margin-bottom:18px;line-height:1.5;"><strong>${existing.name}</strong> er allerede i databasen.<br>Hva vil du gjøre?</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <button class="action-btn green" style="font-size:13px;padding:10px 16px;" onclick="duplicateGoToWine(${existing.id})">Gå til vin</button>
+        <button class="action-btn amber" style="font-size:13px;padding:10px 16px;" onclick="duplicateSaveAnyway()">Lagre duplikat</button>
+        <button class="action-btn" style="font-size:13px;padding:10px 16px;" onclick="duplicateCancel()">Avbryt</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  // Stash the callback for "Lagre duplikat" action
+  window._duplicateOnSaveDuplicate=onSaveDuplicate;
+  // ESC closes the dialog (= cancel)
+  overlay._escHandler=e=>{if(e.key==='Escape'){duplicateCancel();}};
+  document.addEventListener('keydown',overlay._escHandler);
+}
+function duplicateCleanup(){
+  const el=document.getElementById('duplicate-dialog');
+  if(el){
+    if(el._escHandler) document.removeEventListener('keydown', el._escHandler);
+    el.remove();
+  }
+  window._duplicateOnSaveDuplicate=null;
+  popOverlayIfTop();
+}
+function duplicateCancel(){ duplicateCleanup(); /* stays in add-form, user can change vmpId/name */ }
+function duplicateSaveAnyway(){
+  const cb=window._duplicateOnSaveDuplicate;
+  duplicateCleanup();
+  if(cb) cb();
+}
+function duplicateGoToWine(id){
+  duplicateCleanup();
+  // Close add-form so the modal isn't underneath it
+  showManual=false;
+  const fc=document.getElementById('add-form-container');
+  if(fc){ fc.style.display='none'; fc.innerHTML=''; }
+  window._vmpProfile=null;
+  // Open the existing wine's modal in edit mode
+  selectedId=id;
+  const w=wines.find(x=>x.id===id); if(!w) return;
+  ensureImgSnapshot(w);
+  editRating=w.rating||0;
+  renderModal(w, true);
+  pushOverlay();
+}
 
 /* ── STATUS LOGIC ──
  * Each wine has independent booleans w.har and w.bestill.
@@ -682,8 +940,13 @@ function getFiltered(){
   let list=wines.filter(w=>{
     const typeOk=activeTypes.size===0||activeTypes.has(w.type);
     const statusOk=wineMatchesFilter(w);
-    const searchOk=!q||[w.name,w.grape,w.region,w.taste,w.desc,w.note,w.food].some(s=>s&&s.toLowerCase().includes(q));
-    return typeOk&&statusOk&&searchOk;
+    // Food filter: wine must include ALL selected food categories (AND-logic)
+    const wineFoods=Array.isArray(w.food)?w.food:[];
+    const foodOk=activeFoods.size===0||Array.from(activeFoods).every(f=>wineFoods.includes(f));
+    // Search: food is array now, join for substring search
+    const foodSearchText=wineFoods.join(' ');
+    const searchOk=!q||[w.name,w.grape,w.region,w.taste,w.desc,w.note,foodSearchText].some(s=>s&&s.toLowerCase().includes(q));
+    return typeOk&&statusOk&&foodOk&&searchOk;
   });
 
   if(sortBy==='custom'){
@@ -846,8 +1109,10 @@ function renderModal(w, editMode=false){
     </div>
     <div style="${IL}">Smak</div>
     <input id="ed-taste" value="${w.taste}" style="${IS}margin-bottom:8px;"/>
-    <div style="${IL}">Passer til</div>
-    <input id="ed-food" value="${w.food}" style="${IS}margin-bottom:8px;"/>
+    <div style="${IL}">Mat</div>
+    <div id="ed-food-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;padding:8px;border:1px solid #e4dfd6;border-radius:8px;background:#fff;">
+      ${foodChipsHTML(w.food||[], 'toggleEditFoodChip')}
+    </div>
     <div style="${IL}">Beskrivelse</div>
     <textarea id="ed-desc" rows="3" style="${IS}margin-bottom:8px;resize:vertical;">${w.desc}</textarea>
     <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px;">
@@ -873,7 +1138,7 @@ function renderModal(w, editMode=false){
     <div class="detail-grid">
       <span class="dl">Pris:</span><span class="dv">${w.price?Math.round(w.price)+' kr'+priceDate:'—'}</span>
       <span class="dl">Smak:</span><span class="dv">${w.taste}</span>
-      <span class="dl">Mat:</span><span class="dv">${w.food}</span>
+      ${(w.food&&w.food.length)?`<span class="dl">Mat:</span><span class="dv">${w.food.join(', ')}</span>`:''}
       ${w.expertScore?`<span class="dl">Kvalitet:</span><span class="dv" style="display:flex;align-items:center;gap:5px;">${diceSVG(w.expertScore,20)}<span style="font-size:10px;color:#999;font-weight:600;">${scoreTag(w)}</span></span>`:''}
     </div>
     ${w.vmpId?`<a href="https://www.vinmonopolet.no/p/${w.vmpId}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#1a56b0;text-decoration:underline;">Se på Vinmonopolet ↗</a>`:''}
@@ -977,7 +1242,25 @@ function revertImgChange(id){
 /* Re-render the modal in edit mode while preserving any unsaved field values in the form.
  * Needed when something outside the form changes (image upload/remove) and the modal
  * needs to reflect that without losing the user's in-progress text edits. */
-const EDIT_FIELD_IDS = ['ed-name','ed-grape','ed-region','ed-type','ed-price','ed-taste','ed-food','ed-desc','ed-score','ed-src','ed-vmpid','ed-vivino','modal-note'];
+const EDIT_FIELD_IDS = ['ed-name','ed-grape','ed-region','ed-type','ed-price','ed-taste','ed-desc','ed-score','ed-src','ed-vmpid','ed-vivino','modal-note'];
+/* Read selected food chips from a chip container by id. Returns array of canonical names. */
+function readFoodChips(containerId){
+  const c=document.getElementById(containerId); if(!c) return [];
+  return Array.from(c.querySelectorAll('.food-chip[data-on="1"]')).map(b=>b.dataset.food);
+}
+function toggleEditFoodChip(btn){ toggleFoodChipGeneric(btn); markDirty(); }
+function toggleAddFoodChip(btn){ toggleFoodChipGeneric(btn); }
+function toggleFilterFoodChip(btn){ toggleFoodChipGeneric(btn); }
+function toggleFoodChipGeneric(btn){
+  const on=btn.dataset.on==='1';
+  if(on){
+    btn.dataset.on='0';
+    btn.style.background='#fff'; btn.style.color='#5c5248'; btn.style.borderColor='#e4dfd6';
+  } else {
+    btn.dataset.on='1';
+    btn.style.background='#8B1A1A'; btn.style.color='#fff'; btn.style.borderColor='#8B1A1A';
+  }
+}
 function captureEditFormValues(){
   if(!document.getElementById('ed-name')) return null;
   const out={};
@@ -986,6 +1269,7 @@ function captureEditFormValues(){
     if(el) out[id]=el.value;
   });
   out._rating=editRating;
+  out._food=readFoodChips('ed-food-chips');
   return out;
 }
 function restoreEditFormValues(captured){
@@ -996,6 +1280,10 @@ function restoreEditFormValues(captured){
     if(el) el.value=captured[id];
   });
   if('_rating' in captured){ editRating=captured._rating; renderStars(); }
+  if('_food' in captured){
+    const container=document.getElementById('ed-food-chips');
+    if(container) container.innerHTML=foodChipsHTML(captured._food,'toggleEditFoodChip');
+  }
 }
 function rerenderEditModePreservingForm(w){
   const captured=captureEditFormValues();
@@ -1047,7 +1335,7 @@ async function saveEdit(wineId, closeAfter=false){
   const newPrice=parseFloat(fv('ed-price'));
   if(newPrice) w.price=newPrice;
   w.taste    = fv('ed-taste')  || w.taste;
-  w.food     = fv('ed-food')   || w.food;
+  w.food     = readFoodChips('ed-food-chips');
   w.desc     = fv('ed-desc')   !== undefined ? (document.getElementById('ed-desc')?.value ?? w.desc) : w.desc;
   w.expertScore  = score ? parseInt(score) : null;
   w.expertSource = fv('ed-src') || 'GV';
@@ -1190,6 +1478,17 @@ window.addEventListener('popstate', () => {
   if(cc){cc.remove();return;}
   const dc=document.getElementById('delete-confirm');
   if(dc){dc.remove();return;}
+  // Duplicate-dialog: clean its esc-listener too
+  const dup=document.getElementById('duplicate-dialog');
+  if(dup){
+    if(dup._escHandler) document.removeEventListener('keydown', dup._escHandler);
+    dup.remove();
+    window._duplicateOnSaveDuplicate=null;
+    return;
+  }
+  // Food filter overlay
+  const ff=document.getElementById('food-filter-overlay');
+  if(ff){ ff.remove(); return; }
   if(document.getElementById('modal-overlay')){
     if(isDirty){
       // Re-anchor the modal entry we just popped, then show the dirty-close dialog
@@ -1331,7 +1630,11 @@ function toggleManualForm(){
       </div>
       <div class="form-row"><input id="nw-price" type="number" placeholder="Pris (kr)"/><input id="nw-vmpid" placeholder="VMP-nr"/></div>
       <div class="form-row"><input id="nw-vivino" placeholder="Vivino-hash (for bilde)"/></div>
-      <div class="form-row"><input id="nw-taste" placeholder="Smak"/><input id="nw-food" placeholder="Passer til"/></div>
+      <div class="form-row"><input id="nw-taste" placeholder="Smak"/></div>
+      <div style="font-size:10px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Mat</div>
+      <div id="nw-food-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;padding:8px;border:1px solid #e4dfd6;border-radius:8px;background:#fff;">
+        ${foodChipsHTML([], 'toggleAddFoodChip')}
+      </div>
       <div class="form-row"><textarea id="nw-desc" placeholder="Beskrivelse" rows="2"></textarea></div>
       <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
         <label style="font-size:11px;color:#888;">Terningkast:</label>
@@ -1392,7 +1695,7 @@ async function doVmpSearch(q){
       const img=pid?`${VMP_IMG}${pid}-1.jpg`:'';
       // Extract all available fields from search result
       const bc=p.basiccharacteristics||{};
-      const food=(p.readySteadyDrink||p.isGoodFor||p.content?.isGoodFor||[]).map(f=>f.name||f).join(', ');
+      const food=migrateFood((p.readySteadyDrink||p.isGoodFor||p.content?.isGoodFor||[]).map(f=>f.name||f));
       const fylde    = bc.fullness    ??bc.fylde    ??p.fullness    ??null;
       const friskhet = bc.freshness   ??bc.friskhet ??p.freshness   ??null;
       const sodme    = bc.sweetness   ??bc.sodme    ??p.sweetness   ??null;
@@ -1445,13 +1748,33 @@ function profileFromFacets(facets, pid){
     }
     // Food/mat from isGoodfor facet
     if(f.code==='isGoodfor'){
-      result.food=(f.values||[]).map(v=>v.name).join(', ');
+      result.food=migrateFood((f.values||[]).map(v=>v.name));
     }
   });
   return result;
 }
 
+/* Set food chips in a container to match a given array of canonical food names.
+ * Replaces chip HTML so all state is consistent (no half-toggled chips left behind). */
+function setFoodChips(containerId, foodArray, onClickFn){
+  const c=document.getElementById(containerId); if(!c) return;
+  c.innerHTML=foodChipsHTML(foodArray||[], onClickFn);
+}
+
 async function selectVmpProduct(pid, searchData){
+  // Duplicate check: if a wine with this vmpId already exists, ask user what to do
+  const existing=pid?wines.find(w=>w.vmpId===pid):null;
+  if(existing){
+    showDuplicateDialog(existing, ()=>{
+      // "Lagre duplikat": continue filling as normal
+      fillVmpProductData(pid, searchData);
+    });
+    return;
+  }
+  fillVmpProductData(pid, searchData);
+}
+
+async function fillVmpProductData(pid, searchData){
   const box=document.getElementById('nw-search-results');
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};
 
@@ -1460,7 +1783,7 @@ async function selectVmpProduct(pid, searchData){
   set('nw-grape',  searchData.grape);
   set('nw-region', searchData.region);
   set('nw-vmpid',  pid);
-  set('nw-food',   searchData.food);
+  if(searchData.food&&searchData.food.length) setFoodChips('nw-food-chips', searchData.food, 'toggleAddFoodChip');
   if(searchData.price) set('nw-price', Math.round(searchData.price));
   const typeEl=document.getElementById('nw-type');
   if(typeEl) typeEl.value=searchData.type||'red';
@@ -1486,11 +1809,11 @@ async function selectVmpProduct(pid, searchData){
     // Extract profile from facets
     const prof = profileFromFacets(data.facets||[], pid);
 
-    // Fill food from facets (already parsed)
-    const set2=(id,v)=>{const el=document.getElementById(id);if(el&&v&&!el.value)el.value=v.trim();};
-    if(prof.food) set2('nw-food', prof.food);
+    // Apply food from facets if we got more detailed data
+    if(prof.food&&prof.food.length) setFoodChips('nw-food-chips', prof.food, 'toggleAddFoodChip');
 
     // Scrape product page HTML for smak and beskrivelse
+    const set2=(id,v)=>{const el=document.getElementById(id);if(el&&v&&!el.value)el.value=v.trim();};
     if(prodUrl){
       try{
         const pageRes = await fetch(`${VMP_PROXY}?url=${encodeURIComponent(prodUrl)}`);
@@ -1526,10 +1849,24 @@ async function selectVmpProduct(pid, searchData){
 
 async function addManualWine(){
   const name=document.getElementById('nw-name').value.trim();if(!name){alert('Navn er påkrevd.');return;}
+  const vmpIdRaw=document.getElementById('nw-vmpid').value.trim()||null;
+  // Duplicate check: vmpId first (stronger ID), fall back to exact name match
+  let existing=null;
+  if(vmpIdRaw) existing=wines.find(w=>w.vmpId===vmpIdRaw);
+  if(!existing) existing=wines.find(w=>(w.name||'').toLowerCase().trim()===name.toLowerCase());
+  if(existing){
+    showDuplicateDialog(existing, ()=>commitManualWine(name,vmpIdRaw));
+    return;
+  }
+  commitManualWine(name, vmpIdRaw);
+}
+
+async function commitManualWine(name, vmpIdRaw){
   const vivRaw=document.getElementById('nw-vivino').value.trim();let vivinoHash=null;
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);vivinoHash=m?m[1]:vivRaw;}
   const score=document.getElementById('nw-score').value;
   const prof=window._vmpProfile||{};
+  const food=readFoodChips('nw-food-chips');
   const newWine={
     id:nextId(),name,
     grape:  document.getElementById('nw-grape').value.trim()||'—',
@@ -1538,10 +1875,10 @@ async function addManualWine(){
     price:  parseFloat(document.getElementById('nw-price').value)||null,
     priceDate: nowLabel(),
     priceUpdatedAt: Date.now(),
-    vmpId:  document.getElementById('nw-vmpid').value.trim()||null,
+    vmpId:  vmpIdRaw,
     vivinoHash,
     taste:  document.getElementById('nw-taste').value.trim()||'—',
-    food:   document.getElementById('nw-food').value.trim()||'—',
+    food,
     expertScore:  score?parseInt(score):null,
     expertSource: document.getElementById('nw-source').value,
     desc:   document.getElementById('nw-desc').value.trim()||'',
@@ -1558,6 +1895,14 @@ async function addManualWine(){
 }
 
 /* ── BOOT ── */
+function seedDefaults(){
+  // Use a single timestamp so all seeded wines have identical updatedAt; this is fine
+  // because the only reason an updatedAt difference matters is cross-device merge, and
+  // these are fresh records that no other device has touched yet.
+  const now=Date.now();
+  wines=defaultWines.map(w=>{ const copy={...w}; migrateWine(copy); copy.updatedAt=now; return copy; });
+  ensureOrder(); saveLocal(); render();
+}
 async function bootApp(){
   loadLocal();
   ensureOrder();
@@ -1568,21 +1913,18 @@ async function bootApp(){
       await syncToCloud();
       // After successful sync: if both local and cloud were empty, seed defaults
       if(wines.length===0){
-        wines=defaultWines.map(w=>({...w}));
-        ensureOrder(); saveLocal(); render();
+        seedDefaults();
         try{await syncToCloud({forcePush:true});}catch(e){}
       }
     }catch(e){
       // Sync failed (offline mid-boot, network glitch, etc.): if local is empty, seed defaults locally
       if(wines.length===0){
-        wines=defaultWines.map(w=>({...w}));
-        ensureOrder(); saveLocal(); render();
+        seedDefaults();
       }
     }
   } else {
     if(wines.length===0){
-      wines=defaultWines.map(w=>({...w}));
-      ensureOrder(); saveLocal(); render();
+      seedDefaults();
     }
     setSyncBadge('wait','⏳ Offline — bruker lokal kopi');
   }
