@@ -206,7 +206,7 @@ code{background:#f0ede8;padding:1px 4px;border-radius:3px;font-size:10px;color:#
   <div class="lib-header">
     <div>
       <div class="lib-title">🍷 Vinbibliotek</div>
-      <div class="lib-subtitle">Synkronisert via JSONBin · Offline-støtte</div>
+      <div class="lib-subtitle" id="storage-info">— av 100 kB</div>
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
       <span id="sync-badge" class="sync-status sync-off">⏳ Laster...</span>
@@ -712,6 +712,58 @@ function closeFoodFilter(apply){
   popOverlayIfTop();
 }
 
+/* ── EDIT-MODE FOOD SUBMENU ──
+ * Opens an overlay above the edit modal to change matkategorier. The hidden
+ * div #ed-food-chips holds the canonical state; this submenu reads it on open,
+ * lets user toggle chips locally, then on OK writes back + marks dirty only
+ * if the selection actually changed. Cancel / ESC / backdrop discard changes. */
+function openEditFoodSubmenu(){
+  const existing=document.getElementById('food-submenu-overlay');
+  if(existing){ existing.remove(); return; }
+  // Snapshot current selection for change detection on OK
+  const before=readFoodChips('ed-food-chips');
+  pushOverlay();
+  const overlay=document.createElement('div');
+  overlay.id='food-submenu-overlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:1500;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,0.4);';
+  overlay.onclick=(e)=>{ if(e.target===overlay) closeEditFoodSubmenu(false); };
+  overlay.innerHTML=`
+    <div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.22);padding:1.5rem;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;">
+      <div style="font-size:16px;font-weight:600;color:#2a2520;margin-bottom:4px;">🍽 Velg matkategorier</div>
+      <div style="font-size:11px;color:#9a8f84;margin-bottom:14px;">Velg én eller flere matkategorier som passer til denne vinen.</div>
+      <div id="food-submenu-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;">
+        ${foodChipsHTML(before, 'toggleSubmenuFoodChip')}
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+        <button class="action-btn" onclick="closeEditFoodSubmenu(false)" style="font-size:12px;">Avbryt</button>
+        <button class="action-btn green" onclick="closeEditFoodSubmenu(true)" style="font-size:12px;">OK</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay._foodBefore=before;
+}
+function toggleSubmenuFoodChip(btn){ toggleFoodChipGeneric(btn); }
+function closeEditFoodSubmenu(apply){
+  const overlay=document.getElementById('food-submenu-overlay');
+  if(!overlay) return;
+  if(apply){
+    const after=readFoodChips('food-submenu-chips');
+    const before=overlay._foodBefore||[];
+    // Compare sorted arrays — order doesn't matter for set semantics
+    const changed=JSON.stringify([...before].sort())!==JSON.stringify([...after].sort());
+    if(changed){
+      // Write back to the hidden canonical state node
+      const hidden=document.getElementById('ed-food-chips');
+      if(hidden) hidden.innerHTML=foodChipsHTML(after,'toggleEditFoodChip');
+      const cnt=document.getElementById('ed-food-count');
+      if(cnt) cnt.textContent=after.length;
+      markDirty();
+    }
+  }
+  overlay.remove();
+  popOverlayIfTop();
+}
+
 /* Pop the last overlay-history entry if it's still on top. Safe no-op otherwise. */
 function popOverlayIfTop(){
   if(overlayDepth>0){
@@ -1011,6 +1063,28 @@ function render(){
   }
   document.getElementById('wine-list').innerHTML=html;
   if(isCustom)initDrag();
+  updateStorageInfo();
+}
+
+/* ── STORAGE INFO ──
+ * Computes the size of the JSON payload that would be sent to JSONBin (wines + order)
+ * and renders it in the subtitle. Colors:
+ *   0–79 kB:  default grey
+ *   80–89 kB: amber (approaching the 100 kB JSONBin Free limit)
+ *   90–100 kB: red (very close)
+ *   >100 kB:  red + explicit overflow message
+ * Called from render() so it stays in sync with all wine-list mutations. */
+function updateStorageInfo(){
+  const el=document.getElementById('storage-info'); if(!el) return;
+  const bytes=JSON.stringify({wines,order:customOrder}).length;
+  const kb=Math.round(bytes/1024);
+  const n=wines.length;
+  let color='#9a8f84', extra='';
+  if(kb>100){ color='#a32d2d'; extra=' — max of 100 kB exceeded!'; }
+  else if(kb>=90){ color='#a32d2d'; }
+  else if(kb>=80){ color='#996600'; }
+  el.style.color=color;
+  el.textContent=`${kb} av 100 kB (${n})${extra}`;
 }
 
 function typeGlowRgb(type){
@@ -1121,7 +1195,13 @@ function renderModal(w, editMode=false){
     <div style="${IL}">Smak</div>
     <input id="ed-taste" value="${w.taste}" style="${IS}margin-bottom:8px;"/>
     <div style="${IL}">Mat</div>
-    <div id="ed-food-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;padding:8px;border:1px solid #e4dfd6;border-radius:8px;background:#fff;">
+    <button type="button" id="ed-food-btn" onclick="openEditFoodSubmenu()"
+      onmouseover="this.style.background='#f9f8f6'" onmouseout="this.style.background='#fff'"
+      style="width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e4dfd6;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:13px;color:#2a2520;cursor:pointer;font-family:inherit;transition:background .12s;">
+      <span>Mat (<span id="ed-food-count">${(w.food||[]).length}</span>)</span>
+      <span style="color:#9a8f84;font-size:14px;">▸</span>
+    </button>
+    <div id="ed-food-chips" style="display:none;">
       ${foodChipsHTML(w.food||[], 'toggleEditFoodChip')}
     </div>
     <div style="${IL}">Beskrivelse</div>
@@ -1237,6 +1317,8 @@ function restoreEditFormValues(captured){
   if('_food' in captured){
     const container=document.getElementById('ed-food-chips');
     if(container) container.innerHTML=foodChipsHTML(captured._food,'toggleEditFoodChip');
+    const cnt=document.getElementById('ed-food-count');
+    if(cnt) cnt.textContent=(captured._food||[]).length;
   }
 }
 
@@ -1293,12 +1375,15 @@ async function saveEdit(wineId, closeAfter=false){
 
 /* ── WINE STATUS TOGGLE ──
  * key is 'har' or 'bestill'. The two are independent — both can be true simultaneously.
- * Called from view-mode action buttons. */
+ * Called from view-mode action buttons.
+ * Note: renderModal runs BEFORE saveWine so the user sees the toggled state
+ * immediately, even when offline. saveWine persists to localStorage synchronously
+ * and kicks off cloud sync in the background; the sync badge reflects any error. */
 async function toggleWineStatus(id, key){
   const w=wines.find(x=>x.id===id);if(!w)return;
   w[key] = !w[key];
+  renderModal(w, false); // immediate UI feedback — toggle buttons only exist in view mode
   await saveWine(w);
-  renderModal(w, document.getElementById('edit-save-btn')!==null);
 }
 
 /* ── STARS ── */
@@ -1419,6 +1504,9 @@ window.addEventListener('popstate', () => {
   // Food filter overlay
   const ff=document.getElementById('food-filter-overlay');
   if(ff){ ff.remove(); return; }
+  // Edit-mode food submenu (sits on top of modal — check before modal-overlay)
+  const fs=document.getElementById('food-submenu-overlay');
+  if(fs){ fs.remove(); return; }
   if(document.getElementById('modal-overlay')){
     if(isDirty){
       // Re-anchor the modal entry we just popped, then show the dirty-close dialog
