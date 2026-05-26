@@ -388,6 +388,159 @@ function foodChipsHTML(selected, onClickFn){
   }).join('');
 }
 
+/* ── PRESENTATION PROMPT ──
+ * Builds a Claude-ready prompt the user can paste into a Claude chat to generate
+ * a short, engaging wine presentation. The intro/examples block is static (the
+ * same every time); the wine-data block is built per wine.
+ * In edit mode, getEffectiveWine reads live form values so unsaved edits are
+ * reflected in the copied prompt — saves a round-trip if user just typed
+ * something into the smak/desc fields. */
+const PRESENTATION_PROMPT_BASE = `Du er en vinformidler som skriver korte, engasjerende presentasjoner av viner for et bredt publikum — folk uten spesielle vinkunnskaper, men også vinkjennere som kan stikke innom og lese. Presentasjonen skal være sann, interessant og lett å lytte til.
+
+MALEN — 4 KORTE DELER (~80-100 ord totalt, 60-90 sek å lese høyt):
+
+1) KROKEN (1-2 setninger): Fang oppmerksomheten med noe konkret og uventet. Variér mellom: klimaendringer i regionen, geologi/jordsmonn (sand, kalk, vulkansk, skifer), mikroklima (høyde, fjell, hav-påvirkning), produsentens historie, sammenligning med en kjent drue, en kuriositet ved druen eller navnet, regionens status (i fremvekst, "skjult Burgund", på vei opp).
+
+2) HVORFOR DEN ER VERDT OPPMERKSOMHETEN (1-2 setninger): Det spesielle — vinmakerens filosofi, en klassifisering, uvanlig produksjonsmetode, sjelden drueblanding, gammel vinmark. Pris nevnes KUN hvis det er et ekte godt kjøp — ellers er det kjedelig.
+
+3) SMAKEN (1-2 setninger): Folkelig, kroppslig språk. Konkrete bær/frukt/krydder. Unngå svevende vinjargong ("fjernt drag av tobakk", "fokusert avslutning", "mineralsk"). Bruk sammenligninger som hjelper ("ikke tung", "ikke sur", "glir ned uten å gjøre nummer ut av seg", "sitter lenge på tungen", "våkner opp av første slurken").
+
+4) TIL HVA (1 setning): Mat, anledning eller temperatur. Skrives som en fet linje på slutten.
+
+VIKTIG OM VARIASJON: Hvis brukeren ber om regenerering, velg en ANNEN innfallsvinkel i kroken (del 1) og hvorfor (del 2) enn standard sammenligning. Tenk geologi, mikroklima, produsenthistorie, kuriositeter — vær kreativ.
+
+TRE EKSEMPLER PÅ STIL OG TONE:
+
+EKSEMPEL 1 — Terra d'Alter ALF Alfrocheiro 2024
+> Alfrocheiro er en portugisisk drue de fleste aldri har hørt om — men den har blitt kalt **Portugals svar på Pinot Noir**, og det merkes med en gang. Mannen bak vinen er Peter Bright, en australsk "flying winemaker" som slo seg ned i Portugal på 80-tallet og har vært med på å skape moderne portugisisk vin.
+>
+> Druene kommer fra Portalegre — Alentejos høyeste og kjøligste vinmark — så selv om regionen ellers er kjent for solsteik, beholder vinen en friskhet og eleganse man sjelden får til denne prisen.
+>
+> Modne kirsebær og plommer, med en liten krydderkant bak. Lett og saftig — glir ned uten å gjøre nummer ut av seg. Sånn rødvin man fort tar to glass av uten å tenke seg om.
+>
+> **Funker til alt fra pizza og pasta til kylling og lett lammegryte.**
+
+EKSEMPEL 2 — Malvirà Nudo Langhe Nebbiolo 2022
+> Like nordvest for Barolo ligger Roero, hvor nebbiolo-druene vokser i **sandjord** i stedet for kalk. Det gjør vinen lettere, mer parfymert og mer transparent enn de muskuløse Barolo-vinene — uten å miste den klassiske nebbiolo-eleganesen.
+>
+> Navnet "Nudo" — naken — er produsentens credo: minimal inngripen, ingen tunge fat, la druen og jorda snakke. Roero har lenge stått i Barolos skygge, men er på rask vei opp, og dette er en presis introduksjon til hva regionen kan.
+>
+> Kirsebær og rose, med en jordnær avslutning. Litt mer å bryne tennene på enn en hverdags-Langhe — men aldri tung. Sitter lenge på tungen og fortjener å bli smakt på.
+>
+> **Lammeskank, soppgryte eller en lagret hard ost.**
+
+EKSEMPEL 3 — Seckinger Deidesheim Mäushöhle Riesling Erste Lage 2025
+> Mäushöhle betyr bokstavelig talt **"musehullet"** — et lite sjarmerende navn for en av Pfalz' mest anerkjente vinmarker. Den er klassifisert som Erste Lage, omtrent Tysklands svar på Burgunds Premier Cru, og undergrunnen av sandstein og kalk er det som gir Riesling-druen sin karakteristiske stramhet.
+>
+> Seckinger-brødrene har på få år blitt blant Tysklands mest snakkede unge produsenter. De spontanfermenterer — bruker villgjær fra vinmarka i stedet for kjøpt gjær — og lar dermed vinmarken stå tydeligere fram i glasset.
+>
+> Lime og fersken, knusktørr og frisk uten å være sur. Setter i gang munnen og sitter lenge etterpå. Sånn vin som våkner opp av første slurken.
+>
+> **Perfekt til skalldyr, fisk med smør — eller bare som en alenedrikk på terrassen.**
+
+NÅ — SKRIV EN PRESENTASJON AV DENNE VINEN:
+`;
+
+const TYPE_LABELS_NB = {red:'Rødvin', white:'Hvitvin', rose:'Rosévin', other:'Annet'};
+
+/* In edit mode, read live form values so unsaved edits are reflected in the copied prompt.
+ * Falls back to stored wine values for fields not currently in the form. */
+function getEffectiveWine(w){
+  if(!document.getElementById('ed-name')) return w; // not in edit mode
+  const getVal = id => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : undefined;
+  };
+  const eff = {...w};
+  const strOverrides = {name:'ed-name', grape:'ed-grape', region:'ed-region', type:'ed-type', taste:'ed-taste', desc:'ed-desc'};
+  Object.entries(strOverrides).forEach(([prop, id]) => {
+    const v = getVal(id);
+    if(v !== undefined && v !== '') eff[prop] = v;
+  });
+  const priceStr = getVal('ed-price');
+  if(priceStr !== undefined) {
+    const p = parseFloat(priceStr);
+    eff.price = isNaN(p) ? null : p;
+  }
+  const scoreStr = getVal('ed-score');
+  if(scoreStr !== undefined) eff.expertScore = scoreStr ? parseInt(scoreStr) : null;
+  const srcStr = getVal('ed-src');
+  if(srcStr) eff.expertSource = srcStr;
+  if(document.getElementById('ed-food-chips')) eff.food = readFoodChips('ed-food-chips');
+  return eff;
+}
+
+function buildPresentationPrompt(w){
+  const lines = [];
+  lines.push(`Navn: ${w.name || '—'}`);
+  if(w.grape)  lines.push(`Drue: ${w.grape}`);
+  if(w.region) lines.push(`Region: ${w.region}`);
+  lines.push(`Type: ${TYPE_LABELS_NB[w.type] || 'Rødvin'}`);
+  if(w.price)  lines.push(`Pris: ${Math.round(w.price)} kr`);
+  if(w.taste)  lines.push(`Smak (fra Vinmonopolet): ${w.taste}`);
+  if(w.desc)   lines.push(`Beskrivelse: ${w.desc}`);
+  if(Array.isArray(w.food) && w.food.length) lines.push(`Mat: ${w.food.join(', ')}`);
+  if(w.expertScore) lines.push(`Terningkast: ${w.expertScore} (${w.expertSource || 'GV'})`);
+  return PRESENTATION_PROMPT_BASE + '\n' + lines.join('\n') + '\n\nSvar med kun selve presentasjonen — ingen forklaring, ingen forord, ingen avsluttende kommentarer. Bruk **fet** markering for nøkkelord og avsluttende mat-linje, akkurat som eksemplene.';
+}
+
+async function copyPresentationPrompt(wineId){
+  const w = wines.find(x => x.id === wineId);
+  if(!w) return;
+  const effective = getEffectiveWine(w);
+  const prompt = buildPresentationPrompt(effective);
+  const btn = document.getElementById('copy-prompt-btn');
+  const originalText = btn ? btn.textContent : '';
+  const setFeedback = (msg, ok=true) => {
+    if(!btn) return;
+    btn.textContent = msg;
+    btn.style.background = ok ? '#e8f4e8' : '#fdecea';
+    btn.style.color = ok ? '#2d6a2d' : '#a32d2d';
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.background = '';
+      btn.style.color = '';
+    }, 2500);
+  };
+  // Modern Clipboard API (requires HTTPS or localhost)
+  if(navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setFeedback('✓ Kopiert! Lim inn i Claude');
+      return;
+    } catch(e) { /* fall through to execCommand fallback */ }
+  }
+  // Fallback for older browsers / non-HTTPS contexts (e.g. older iOS Safari)
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = prompt;
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    setFeedback(ok ? '✓ Kopiert! Lim inn i Claude' : '⚠ Kopiering feilet', ok);
+  } catch(e) {
+    setFeedback('⚠ Kopiering feilet', false);
+  }
+}
+
+/* Render presentation text with minimal markdown — bold (**...**) and line breaks.
+ * HTML-escape first so user-pasted text can't inject markup. */
+function renderPresentation(text){
+  if(!text) return '';
+  return text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
 /* ── SETUP ── */
 function showSetupScreen(){document.getElementById('app-root').style.display='none';document.getElementById('setup-screen').style.display='flex';}
 function hideSetupScreen(){document.getElementById('setup-screen').style.display='none';document.getElementById('app-root').style.display='block';}
@@ -1218,6 +1371,9 @@ function renderModal(w, editMode=false){
     <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
     <div style="${IL}">Mitt notat</div>
     <textarea class="tasting-note" id="modal-note" rows="3" placeholder="Skriv egne notater her..." style="${IS}resize:vertical;">${w.note||''}</textarea>
+    <div style="${IL}margin-top:10px;">Presentasjon</div>
+    <textarea class="tasting-note" id="ed-presentation" rows="6" placeholder="Lim inn vin-presentasjon her, eller klikk «Kopier prompt» og generer i Claude først..." style="${IS}resize:vertical;">${w.presentation||''}</textarea>
+    <button type="button" id="copy-prompt-btn" class="action-btn" style="margin-top:6px;font-size:11px;" onclick="copyPresentationPrompt(${w.id})">📋 Kopier prompt for Claude</button>
   ` : `
     <div class="modal-title">${w.name}</div>
     <div class="modal-meta">${w.grape} · ${w.region} · ${typeLabel(w.type)}</div>
@@ -1232,6 +1388,7 @@ function renderModal(w, editMode=false){
     ${profileCirclesHTML(w,false)?`<div style="margin-top:10px;">${profileCirclesHTML(w,false)}</div>`:''}
     ${w.note?`<div style="margin-top:8px;font-size:12px;color:#666;background:#f9f8f5;border-radius:7px;padding:8px 10px;border:1px solid #e5e5e5;"><span style="font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:3px;">Mitt notat</span>${w.note}</div>`:''}
     ${w.rating?`<div style="margin-top:6px;display:flex;gap:2px;">${Array.from({length:6},(_,i)=>`<span style="font-size:18px;color:${i<w.rating?'#f0a500':'#ddd'};">★</span>`).join('')}</div>`:''}
+    ${w.presentation?`<div style="margin-top:10px;font-size:12.5px;color:#3a2f28;background:#fbf7f0;border-radius:7px;padding:11px 13px;border:1px solid #e4dfd6;line-height:1.65;"><span style="font-size:10px;font-weight:600;color:#9a8f84;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">🎤 Presentasjon</span>${renderPresentation(w.presentation)}</div>`:''}
   `;
 
   const actionBtns = editMode ? `
@@ -1276,7 +1433,7 @@ function renderModal(w, editMode=false){
 /* Re-render the modal in edit mode while preserving any unsaved field values in the form.
  * Needed when something outside the form changes and the modal
  * needs to reflect that without losing the user's in-progress text edits. */
-const EDIT_FIELD_IDS = ['ed-name','ed-grape','ed-region','ed-type','ed-price','ed-taste','ed-desc','ed-score','ed-src','ed-vmpid','ed-vivino','modal-note'];
+const EDIT_FIELD_IDS = ['ed-name','ed-grape','ed-region','ed-type','ed-price','ed-taste','ed-desc','ed-score','ed-src','ed-vmpid','ed-vivino','modal-note','ed-presentation'];
 /* Read selected food chips from a chip container by id. Returns array of canonical names. */
 function readFoodChips(containerId){
   const c=document.getElementById(containerId); if(!c) return [];
@@ -1358,6 +1515,8 @@ async function saveEdit(wineId, closeAfter=false){
   if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);w.vivinoHash=m?m[1]:vivRaw;}else w.vivinoHash=null;
   // note: use raw value (not trimmed) to preserve whitespace
   w.note   = document.getElementById('modal-note')?.value ?? w.note;
+  // presentation: same — preserve whitespace and line breaks
+  w.presentation = document.getElementById('ed-presentation')?.value ?? w.presentation;
   w.rating = editRating;
   // if price was manually edited, update priceUpdatedAt
   if(newPrice && newPrice!==oldPrice) w.priceUpdatedAt=Date.now();
