@@ -1109,7 +1109,6 @@ function duplicateGoToWine(id){
  * Each wine has independent booleans w.har and w.bestill.
  * Filters: 'alle' = no filter (show all). 'har' or 'bestill' = require that flag.
  * If both 'har' and 'bestill' selected: wine must have BOTH (AND logic). */
-function hasTasted(w){return !!(w.rating||(w.note&&w.note.trim()));}
 function wineMatchesFilter(w){
   if(activeStatuses.has('alle')) return true;
   if(activeStatuses.has('har')     && !w.har)     return false;
@@ -1278,7 +1277,7 @@ function getFiltered(){
     const foodOk=activeFoods.size===0||Array.from(activeFoods).every(f=>wineFoods.includes(f));
     // Search: food is array now, join for substring search
     const foodSearchText=wineFoods.join(' ');
-    const searchOk=!q||[w.name,w.grape,w.region,w.taste,w.desc,w.note,foodSearchText].some(s=>s&&s.toLowerCase().includes(q));
+    const searchOk=!q||[w.name,w.grape,w.region,w.taste,w.desc,w.note,w.presentation,foodSearchText].some(s=>s&&s.toLowerCase().includes(q));
     return typeOk&&statusOk&&foodOk&&searchOk;
   });
 
@@ -1437,7 +1436,6 @@ function openModal(id){
 }
 
 function renderModal(w, editMode=false){
-  const tasted=hasTasted(w);
   // Status buttons (har/bestill) — view mode only. Each toggles independently;
   // both can be active simultaneously.
   const harBtn=`<button class="action-btn${w.har?' green':''}" onclick="toggleWineStatus(${w.id},'har')">${w.har?'✓ Har':'Har'}</button>`;
