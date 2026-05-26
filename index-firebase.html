@@ -1502,8 +1502,10 @@ function renderModal(w, editMode=false){
 
   const actionBtns = editMode ? `
     <button class="action-btn red" onclick="confirmDelete(${w.id})">🗑 Slett vin</button>
-    <button class="action-btn" style="margin-left:auto;" onclick="cancelEdit(${w.id})">Avbryt</button>
-    <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${w.id})">Lagre</button>
+    <div style="display:flex;gap:7px;margin-left:auto;">
+      <button class="action-btn" onclick="cancelEdit(${w.id})">Avbryt</button>
+      <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${w.id})">Lagre</button>
+    </div>
   ` : `
     ${harBtn}${bestillBtn}
     <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
@@ -1774,12 +1776,22 @@ window.addEventListener('popstate', () => {
   const fs=document.getElementById('food-submenu-overlay');
   if(fs){ fs.remove(); return; }
   if(document.getElementById('modal-overlay')){
-    if(isDirty){
-      // Re-anchor the modal entry we just popped, then show the dirty-close dialog
+    // Distinguish edit-mode vs view-mode: edit-mode has the Lagre-button with id edit-save-btn.
+    const inEditMode = !!document.getElementById('edit-save-btn');
+    if(inEditMode){
+      // ESC/tilbake i edit-mode: gå til view-mode for samme vin (ikke lukk modal).
+      // Re-anker først siden modal-historikk-entry ble poppet.
       pushOverlay();
-      confirmClose(doCloseModal);
+      if(isDirty){
+        // Ulagrede endringer — vis bekreftelsesdialog. Etter forkast/lagre: havne i view-mode.
+        confirmClose('goToView');
+      } else {
+        const w = wines.find(x => x.id === selectedId);
+        if(w) renderModal(w, false);
+      }
       return;
     }
+    // View-mode: lukk modal helt (uendret oppførsel — kan ikke være dirty her).
     doCloseModalNoHistory();
     return;
   }
@@ -1836,10 +1848,16 @@ function confirmDelete(id){
   document.body.appendChild(overlay);
   pushOverlay();
 }
-function confirmClose(callback){
-  if(!isDirty){callback();return;}
+/* Ulagrede endringer-dialog. Action er enten 'close' (lukk hele modalen — legacy-bruk)
+ * eller 'goToView' (gå tilbake til view-mode for samme vin — brukes ved ESC/tilbake i edit-mode).
+ * Lagrer action i modul-variabel siden dismiss/save-handlerne er separate onclick. */
+let _confirmCloseAction = 'close';
+
+function confirmClose(action){
+  _confirmCloseAction = action || 'close';
+  if(!isDirty){ executeCloseAction(); return; }
   const existing=document.getElementById('close-confirm');
-  if(existing){existing.remove();isDirty=false;callback();return;}
+  if(existing){existing.remove();isDirty=false;executeCloseAction();return;}
   const overlay=document.createElement('div');
   overlay.id='close-confirm';
   overlay.style.cssText='position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,0.3);';
@@ -1847,7 +1865,7 @@ function confirmClose(callback){
     <div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.22);padding:1.5rem;max-width:300px;width:100%;text-align:center;">
       <div style="font-size:24px;margin-bottom:8px;">⚠️</div>
       <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:6px;">Ulagrede endringer</div>
-      <div style="font-size:12px;color:#888;margin-bottom:20px;">Vil du lagre endringene før du lukker?</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px;">Vil du lagre endringene før du går tilbake?</div>
       <div style="display:flex;gap:8px;justify-content:center;">
         <button class="action-btn green" style="font-size:13px;padding:9px 20px;" onclick="confirmSaveClose()">Ja, lagre</button>
         <button class="action-btn red" style="font-size:13px;padding:9px 20px;" onclick="dismissConfirmClose()">Nei, forkast</button>
@@ -1856,17 +1874,42 @@ function confirmClose(callback){
   document.body.appendChild(overlay);
   pushOverlay();
 }
+
+/* Felles "etter dialog"-handler. Kjøres når ingen dirty-state eller etter forkast/lagre. */
+function executeCloseAction(){
+  if(_confirmCloseAction === 'goToView'){
+    const w = wines.find(x => x.id === selectedId);
+    if(w) renderModal(w, false);
+  } else {
+    doCloseModal();
+  }
+}
+
 function dismissConfirmClose(){
-  // User chose to discard changes — close confirm overlay AND modal together.
+  // User chose to discard changes.
   const el=document.getElementById('close-confirm');if(el)el.remove();
   isDirty=false;
-  doCloseModal(); // cleans DOM and pops history
+  if(_confirmCloseAction === 'goToView'){
+    // Modal forblir åpen → vis view-mode + pop dialog-historikk
+    const w = wines.find(x => x.id === selectedId);
+    if(w) renderModal(w, false);
+    popOverlayIfTop();
+  } else {
+    doCloseModal(); // legacy: pop alle overlay-entries og lukk modal
+  }
 }
-function confirmSaveClose(){
-  // User chose to save and close. Remove confirm dialog manually so its DOM is gone before
-  // saveEdit re-renders or doCloseModal runs.
+async function confirmSaveClose(){
+  // User chose to save first.
   const el=document.getElementById('close-confirm');if(el)el.remove();
-  if(selectedId!==null) saveEdit(selectedId, true); // closeAfter=true (user was trying to close)
+  if(selectedId===null){ popOverlayIfTop(); return; }
+  if(_confirmCloseAction === 'goToView'){
+    // Lagre + bli stående i modal (saveEdit med closeAfter=false gjør renderModal til view-mode)
+    await saveEdit(selectedId, false);
+    popOverlayIfTop(); // pop dialog-historikk; modal forblir åpen
+  } else {
+    // Legacy: lagre og lukk modal
+    saveEdit(selectedId, true);
+  }
 }
 
 function closeModal(e){
