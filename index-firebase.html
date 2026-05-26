@@ -279,7 +279,6 @@ const LS_KEY     = 'vinbibliotek_wines_fb_v1';   // ny nøkkel for Firebase-vers
 const LS_ORDER   = 'vinbibliotek_order_fb_v1';   // ny nøkkel for Firebase-versjonen
 const VMP_IMG    = 'https://bilder.vinmonopolet.no/cache/300x300-0/';
 const VMP_PROXY  = 'https://vinmonopol-proxy.esandal.workers.dev/';
-const VIV_IMG    = 'https://images.vivino.com/thumbs/';
 
 /* ── FIREBASE CONFIG ──
  * apiKey er IKKE en hemmelighet — den identifiserer prosjektet ditt for klientsiden.
@@ -1121,7 +1120,6 @@ function wineMatchesFilter(w){
 function getImgSrc(w){
   if(w.localImg)return w.localImg; // base64 uploaded image
   if(w.vmpId)return VMP_IMG+w.vmpId+'-1.jpg';
-  if(w.vivinoHash)return VIV_IMG+w.vivinoHash+'_pb_x600.png';
   return null;
 }
 function imgAreaHTML(w,height,clickable=false){
@@ -1133,14 +1131,6 @@ function imgAreaHTML(w,height,clickable=false){
     `style="max-width:100%;max-height:${height}px;object-fit:contain;padding:7px;"`;
   const showPh=`document.getElementById('ph-${uid}').style.display='flex'`;
   if(!src)return `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${typeIcon(w.type,iconSz)}</div>`;
-  const vmpSrc=w.vmpId&&!w.localImg&&!w.vivinoHash?VMP_IMG+w.vmpId+'-1.jpg':null;
-  const vivSrc=w.vivinoHash&&!w.localImg?VIV_IMG+w.vivinoHash+'_pb_x600.png':null;
-  if(w.localImg){
-    return `<img id="imgel-${uid}" src="${src}" ${clickAttr} onerror="this.style.display='none';${showPh}" />${ph}`;
-  }
-  if(vmpSrc&&vivSrc){
-    return `<img id="imgel-${uid}" src="${vmpSrc}" ${clickAttr} onerror="this.src='${vivSrc}';this.onerror=function(){this.style.display='none';${showPh}}" />${ph}`;
-  }
   return `<img id="imgel-${uid}" src="${src}" ${clickAttr} onerror="this.style.display='none';${showPh}" />${ph}`;
 }
 
@@ -1241,24 +1231,24 @@ function nextId(){return wines.length?Math.max(...wines.map(w=>w.id))+1:1;}
 
 /* ── DEFAULT WINES ── */
 const defaultWines=[
-  {id:1,name:'Fun Fuel Riesling',region:'Rheinhessen, Tyskland',grape:'Riesling',type:'white',price:145,priceDate:'APR26',vmpId:'16349201',vivinoHash:null,taste:'Eple, sitrus, litt drops',food:'Aperitiff, sushi, spicy mat',expertScore:3,expertSource:'GV',desc:'Frisk og lett med eple og sitrus. Litt sødme som gjør den enkel å like. Ukrevende hverdagsvin til budsjettprisen.',note:'',rating:0,updatedAt:1},
-  {id:2,name:'Seckinger Deidesheim Mäushöhle Riesling Erste Lage 2025',region:'Pfalz, Tyskland',grape:'Riesling',type:'white',price:198,priceDate:'APR26',vmpId:'19705401',vivinoHash:null,taste:'Lime, gul steinfrukt, eple, flintrøyk',food:'Skalldyr, fisk, lyst kjøtt',expertScore:5,expertSource:'GV',desc:'Stram og frisk med lime og gul steinfrukt. Spontanfermentert og lagret på fat gir kompleksitet. Ren og fokusert vin som sitter lenge — høy kvalitet for prisen.',note:'',rating:0,updatedAt:1},
-  {id:3,name:'Poggio Allora Vernaccia di San Gimignano 2024',region:'Toscana, Italia',grape:'Vernaccia',type:'white',price:181,priceDate:'APR26',vmpId:null,vivinoHash:'QI7EheAHRnygnrtSuYPk4A',taste:'Sitron, mandel, urter',food:'Fisk, pasta, salater',expertScore:4,expertSource:'GV',desc:'Tørr med sitrus og et lite bitt av mandel. Litt rund i kantene. Fin balanse mellom friskhet og mykhet — god hverdagsvin til maten.',note:'',rating:0,updatedAt:1},
-  {id:4,name:'Brandini Langhe Arneis La Margherite 2024',region:'Piemonte, Italia',grape:'Arneis',type:'white',price:250,priceDate:'APR26',vmpId:null,vivinoHash:'SZn967qJSJWokzj5AIfqtw',taste:'Pære, blomster, nøtter',food:'Kylling, kremet pasta, skalldyr',expertScore:4,expertSource:'GV',desc:'Smaker av moden pære og blomster med nøttepreget avslutning. Litt rund og fyldig — har nok kropp til å løfte kremet mat.',note:'',rating:0,updatedAt:1},
-  {id:5,name:'Gmeinböck Grüner Veltliner Muschelkalk',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:169,priceDate:'APR26',vmpId:null,vivinoHash:'UZ3PnV5AQTClBCF2L850MQ',taste:'Sitrus, pepper, mineral, frisk',food:'Fisk, salater, grønnsaker, kylling',expertScore:4,expertSource:'GV',desc:'Frisk og sprø med sitrus og et lite pepperpreg. Ren stil fra kalkholdig jord. Veldig allsidig til mat — beste kjøp i Grüner-kategorien.',note:'',rating:0,updatedAt:1},
-  {id:6,name:'Kracher Grüner Veltliner 2023',region:'Burgenland, Østerrike',grape:'Grüner Veltliner',type:'white',price:239,priceDate:'APR26',vmpId:null,vivinoHash:'lpYtigHwQWCuQpUDciJbYA',taste:'Sitrus, urter, hvit pepper, mineralsk',food:'Fisk, ost, grønnsaker',expertScore:4,expertSource:'GV',desc:'Strammere og mer konsentrert enn klassisk Grüner. Sitrus og urter med litt trykk og mineralitet. Føles mer seriøs og varer lenge.',note:'',rating:0,updatedAt:1},
-  {id:7,name:'Neustifter Exklusiv Grüner Veltliner',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:198,priceDate:'APR26',vmpId:'17151001',vivinoHash:null,taste:'Sitrus, pepper, melon, klassisk',food:'Salater, fisk, hvit kjøtt',expertScore:3,expertSource:'GV',desc:'Klassisk Grüner-stil med sitrus og litt pepper. Ren og balansert, litt fyldig avslutning. Ikke komplisert, men god og trygg.',note:'',rating:0,updatedAt:1},
-  {id:8,name:'Pfaffl Weinviertel Zeisen Grüner Veltliner 2020',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:254,priceDate:'APR26',vmpId:'10544901',vivinoHash:null,taste:'Moden frukt, krydder, urter, bitter avslutning',food:'Svin, asiatisk mat, kremet pasta',expertScore:4,expertSource:'GV',desc:'Litt rikere med moden frukt og krydder. Har mer tyngde enn de yngre Grünerne. Smaker mer og varer lengre — best av de fire til kraftigere mat.',note:'',rating:0,updatedAt:1},
-  {id:9,name:'Fontanafredda Solerose Langhe Rosato 2022',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera/Dolcetto',type:'rose',price:250,priceDate:'APR26',vmpId:'9741901',vivinoHash:null,taste:'Jordbær, bringebær, urter, frisk',food:'Sommermat, salater, fisk, antipasti',expertScore:4,expertSource:'GV',desc:'Frisk rosé med røde bær og litt urter. Tørr og elegant fra Piemonte. Sommerlig og lett å like — fungerer like godt alene som til mat.',note:'',rating:0,updatedAt:1},
-  {id:10,name:'Enzo Bartoli Langhe Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:175,priceDate:'APR26',vmpId:'11312001',vivinoHash:null,taste:'Kirsebær, roser, litt tannin',food:'Pizza, pasta, spekemat',expertScore:3,expertSource:'GV',desc:'Lys og frisk med kirsebær og rosduft. Litt tørr i munnen fra nebbiolo-tanniner. God og enkel inngang til druen uten å sprenge budsjettet.',note:'',rating:0,updatedAt:1},
-  {id:11,name:'Pietro di Campo Monferrato Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:179,priceDate:'APR26',vmpId:null,vivinoHash:'nK53OekCT9OFYELvCO9L6g',taste:'Røde bær, mild, enkel',food:'Pizza, pasta, enkel kjøttmat',expertScore:3,expertSource:'GV',desc:'Mild og ganske enkel. Litt røde bær og lite motstand. Mer volum enn opplevelse — 100cl gjør det til mye vin for pengene.',note:'',rating:0,updatedAt:1},
-  {id:12,name:'F.lli. Giacosa Langhe Nebbiolo Leunin 2023',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:219,priceDate:'APR26',vmpId:'7018701',vivinoHash:null,taste:'Kirsebær, nype, urter, fat',food:'Kjøtt, ost, sopp',expertScore:4,expertSource:'GV',desc:'Strammere med tydeligere tanniner og mer dybde. Kirsebær, nype og litt fat. Føles mer seriøs enn de enklere nebbioloane.',note:'',rating:0,updatedAt:1},
-  {id:13,name:'Malvirà Nudo Langhe Nebbiolo 2022',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:314,priceDate:'APR26',vmpId:'11847301',vivinoHash:null,taste:'Kirsebær, urter, tørket rose, tobakk',food:'Kjøtt, sopp, vilt',expertScore:5,expertSource:'GV',desc:'Ren og presis med dypere smak av kirsebær og urter. Stram, men balansert med lang avslutning. Best i nebbiolo-kategorien — verdt prisen.',note:'',rating:0,updatedAt:1},
-  {id:14,name:'Kaltern Alto Adige Edelvernatsch 2023',region:'Alto Adige, Italia',grape:'Schiava',type:'red',price:205,priceDate:'APR26',vmpId:null,vivinoHash:'_0j-tYkXQSW3uK3gy0pEtQ',taste:'Røde bær, saftig, blomster, lett',food:'Lunsj, spekemat, kylling, pizza',expertScore:3,expertSource:'GV',desc:'Svært lett og saftig med røde bær og blomsterduft. Nesten juice-aktig friskhet. Ukomplisert og sjarmerende — perfekt til lunsj eller lett sommermat.',note:'',rating:0,updatedAt:1},
-  {id:15,name:'Tedeschi Valpolicella Classico Lucchine 2024',region:'Veneto, Italia',grape:'Corvina/Corvinone/Rondinella',type:'red',price:194,priceDate:'APR26',vmpId:'5127201',vivinoHash:null,taste:'Kirsebær, urter, frisk, lett',food:'Pizza, pasta, enkel kjøttmat',expertScore:4,expertSource:'GV',desc:'Frisk og lett med kirsebær og urter. Klassisk Valpolicella fra pålitelig produsent. Veldig anvendelig til hverdagsmat.',note:'',rating:0,updatedAt:1},
-  {id:16,name:'Icardi Pafoj Langhe Rosso',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera',type:'red',price:265,priceDate:'APR26',vmpId:null,vivinoHash:'tRHAFYvOTGW8j_acZJuy4g',taste:'Mørke bær, myk, fyldig, litt vanilje',food:'Kjøttmat, gryte, pasta bolognese',expertScore:4,expertSource:'GV',desc:'Mykere og rundere med mørkere bær og litt fatkrydder. Litt mer fylde enn de enklere Langhe-vinene. Behagelig og lett å like til mat.',note:'',rating:0,updatedAt:1},
-  {id:17,name:'Fun Fuel Shiraz',region:'Sør-Afrika',grape:'Shiraz',type:'red',price:145,priceDate:'APR26',vmpId:'16274501',vivinoHash:null,taste:'Mørke bær, krydder, pepper, fyldig',food:'Grill, burger, sterk mat',expertScore:3,expertSource:'GV',desc:'Fyldig med mørke bær og litt krydder og pepper. Enkel i uttrykket men veldig lett å like. God budsjettvin til grillmat.',note:'',rating:0,updatedAt:1},
-  {id:18,name:'Dom. Wachau Glühwein',region:'Wachau, Østerrike',grape:'Rød blend',type:'other',price:null,priceDate:'APR26',vmpId:'11323501',vivinoHash:null,taste:'Søt, kanel, nellik, appelsin',food:'Varm drikke, julemat, kos',expertScore:3,expertSource:'GV',desc:'Søt og krydret med kanel, nellik og appelsin. Varm og fyldig gløgg fra Wachau. Mer kos enn vinopplevelse.',note:'',rating:0,updatedAt:1}
+  {id:1,name:'Fun Fuel Riesling',region:'Rheinhessen, Tyskland',grape:'Riesling',type:'white',price:145,priceDate:'APR26',vmpId:'16349201',taste:'Eple, sitrus, litt drops',food:'Aperitiff, sushi, spicy mat',expertScore:3,expertSource:'GV',desc:'Frisk og lett med eple og sitrus. Litt sødme som gjør den enkel å like. Ukrevende hverdagsvin til budsjettprisen.',note:'',rating:0,updatedAt:1},
+  {id:2,name:'Seckinger Deidesheim Mäushöhle Riesling Erste Lage 2025',region:'Pfalz, Tyskland',grape:'Riesling',type:'white',price:198,priceDate:'APR26',vmpId:'19705401',taste:'Lime, gul steinfrukt, eple, flintrøyk',food:'Skalldyr, fisk, lyst kjøtt',expertScore:5,expertSource:'GV',desc:'Stram og frisk med lime og gul steinfrukt. Spontanfermentert og lagret på fat gir kompleksitet. Ren og fokusert vin som sitter lenge — høy kvalitet for prisen.',note:'',rating:0,updatedAt:1},
+  {id:3,name:'Poggio Allora Vernaccia di San Gimignano 2024',region:'Toscana, Italia',grape:'Vernaccia',type:'white',price:181,priceDate:'APR26',vmpId:null,taste:'Sitron, mandel, urter',food:'Fisk, pasta, salater',expertScore:4,expertSource:'GV',desc:'Tørr med sitrus og et lite bitt av mandel. Litt rund i kantene. Fin balanse mellom friskhet og mykhet — god hverdagsvin til maten.',note:'',rating:0,updatedAt:1},
+  {id:4,name:'Brandini Langhe Arneis La Margherite 2024',region:'Piemonte, Italia',grape:'Arneis',type:'white',price:250,priceDate:'APR26',vmpId:null,taste:'Pære, blomster, nøtter',food:'Kylling, kremet pasta, skalldyr',expertScore:4,expertSource:'GV',desc:'Smaker av moden pære og blomster med nøttepreget avslutning. Litt rund og fyldig — har nok kropp til å løfte kremet mat.',note:'',rating:0,updatedAt:1},
+  {id:5,name:'Gmeinböck Grüner Veltliner Muschelkalk',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:169,priceDate:'APR26',vmpId:null,taste:'Sitrus, pepper, mineral, frisk',food:'Fisk, salater, grønnsaker, kylling',expertScore:4,expertSource:'GV',desc:'Frisk og sprø med sitrus og et lite pepperpreg. Ren stil fra kalkholdig jord. Veldig allsidig til mat — beste kjøp i Grüner-kategorien.',note:'',rating:0,updatedAt:1},
+  {id:6,name:'Kracher Grüner Veltliner 2023',region:'Burgenland, Østerrike',grape:'Grüner Veltliner',type:'white',price:239,priceDate:'APR26',vmpId:null,taste:'Sitrus, urter, hvit pepper, mineralsk',food:'Fisk, ost, grønnsaker',expertScore:4,expertSource:'GV',desc:'Strammere og mer konsentrert enn klassisk Grüner. Sitrus og urter med litt trykk og mineralitet. Føles mer seriøs og varer lenge.',note:'',rating:0,updatedAt:1},
+  {id:7,name:'Neustifter Exklusiv Grüner Veltliner',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:198,priceDate:'APR26',vmpId:'17151001',taste:'Sitrus, pepper, melon, klassisk',food:'Salater, fisk, hvit kjøtt',expertScore:3,expertSource:'GV',desc:'Klassisk Grüner-stil med sitrus og litt pepper. Ren og balansert, litt fyldig avslutning. Ikke komplisert, men god og trygg.',note:'',rating:0,updatedAt:1},
+  {id:8,name:'Pfaffl Weinviertel Zeisen Grüner Veltliner 2020',region:'Weinviertel, Østerrike',grape:'Grüner Veltliner',type:'white',price:254,priceDate:'APR26',vmpId:'10544901',taste:'Moden frukt, krydder, urter, bitter avslutning',food:'Svin, asiatisk mat, kremet pasta',expertScore:4,expertSource:'GV',desc:'Litt rikere med moden frukt og krydder. Har mer tyngde enn de yngre Grünerne. Smaker mer og varer lengre — best av de fire til kraftigere mat.',note:'',rating:0,updatedAt:1},
+  {id:9,name:'Fontanafredda Solerose Langhe Rosato 2022',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera/Dolcetto',type:'rose',price:250,priceDate:'APR26',vmpId:'9741901',taste:'Jordbær, bringebær, urter, frisk',food:'Sommermat, salater, fisk, antipasti',expertScore:4,expertSource:'GV',desc:'Frisk rosé med røde bær og litt urter. Tørr og elegant fra Piemonte. Sommerlig og lett å like — fungerer like godt alene som til mat.',note:'',rating:0,updatedAt:1},
+  {id:10,name:'Enzo Bartoli Langhe Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:175,priceDate:'APR26',vmpId:'11312001',taste:'Kirsebær, roser, litt tannin',food:'Pizza, pasta, spekemat',expertScore:3,expertSource:'GV',desc:'Lys og frisk med kirsebær og rosduft. Litt tørr i munnen fra nebbiolo-tanniner. God og enkel inngang til druen uten å sprenge budsjettet.',note:'',rating:0,updatedAt:1},
+  {id:11,name:'Pietro di Campo Monferrato Nebbiolo',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:179,priceDate:'APR26',vmpId:null,taste:'Røde bær, mild, enkel',food:'Pizza, pasta, enkel kjøttmat',expertScore:3,expertSource:'GV',desc:'Mild og ganske enkel. Litt røde bær og lite motstand. Mer volum enn opplevelse — 100cl gjør det til mye vin for pengene.',note:'',rating:0,updatedAt:1},
+  {id:12,name:'F.lli. Giacosa Langhe Nebbiolo Leunin 2023',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:219,priceDate:'APR26',vmpId:'7018701',taste:'Kirsebær, nype, urter, fat',food:'Kjøtt, ost, sopp',expertScore:4,expertSource:'GV',desc:'Strammere med tydeligere tanniner og mer dybde. Kirsebær, nype og litt fat. Føles mer seriøs enn de enklere nebbioloane.',note:'',rating:0,updatedAt:1},
+  {id:13,name:'Malvirà Nudo Langhe Nebbiolo 2022',region:'Piemonte, Italia',grape:'Nebbiolo',type:'red',price:314,priceDate:'APR26',vmpId:'11847301',taste:'Kirsebær, urter, tørket rose, tobakk',food:'Kjøtt, sopp, vilt',expertScore:5,expertSource:'GV',desc:'Ren og presis med dypere smak av kirsebær og urter. Stram, men balansert med lang avslutning. Best i nebbiolo-kategorien — verdt prisen.',note:'',rating:0,updatedAt:1},
+  {id:14,name:'Kaltern Alto Adige Edelvernatsch 2023',region:'Alto Adige, Italia',grape:'Schiava',type:'red',price:205,priceDate:'APR26',vmpId:null,taste:'Røde bær, saftig, blomster, lett',food:'Lunsj, spekemat, kylling, pizza',expertScore:3,expertSource:'GV',desc:'Svært lett og saftig med røde bær og blomsterduft. Nesten juice-aktig friskhet. Ukomplisert og sjarmerende — perfekt til lunsj eller lett sommermat.',note:'',rating:0,updatedAt:1},
+  {id:15,name:'Tedeschi Valpolicella Classico Lucchine 2024',region:'Veneto, Italia',grape:'Corvina/Corvinone/Rondinella',type:'red',price:194,priceDate:'APR26',vmpId:'5127201',taste:'Kirsebær, urter, frisk, lett',food:'Pizza, pasta, enkel kjøttmat',expertScore:4,expertSource:'GV',desc:'Frisk og lett med kirsebær og urter. Klassisk Valpolicella fra pålitelig produsent. Veldig anvendelig til hverdagsmat.',note:'',rating:0,updatedAt:1},
+  {id:16,name:'Icardi Pafoj Langhe Rosso',region:'Piemonte, Italia',grape:'Nebbiolo/Barbera',type:'red',price:265,priceDate:'APR26',vmpId:null,taste:'Mørke bær, myk, fyldig, litt vanilje',food:'Kjøttmat, gryte, pasta bolognese',expertScore:4,expertSource:'GV',desc:'Mykere og rundere med mørkere bær og litt fatkrydder. Litt mer fylde enn de enklere Langhe-vinene. Behagelig og lett å like til mat.',note:'',rating:0,updatedAt:1},
+  {id:17,name:'Fun Fuel Shiraz',region:'Sør-Afrika',grape:'Shiraz',type:'red',price:145,priceDate:'APR26',vmpId:'16274501',taste:'Mørke bær, krydder, pepper, fyldig',food:'Grill, burger, sterk mat',expertScore:3,expertSource:'GV',desc:'Fyldig med mørke bær og litt krydder og pepper. Enkel i uttrykket men veldig lett å like. God budsjettvin til grillmat.',note:'',rating:0,updatedAt:1},
+  {id:18,name:'Dom. Wachau Glühwein',region:'Wachau, Østerrike',grape:'Rød blend',type:'other',price:null,priceDate:'APR26',vmpId:'11323501',taste:'Søt, kanel, nellik, appelsin',food:'Varm drikke, julemat, kos',expertScore:3,expertSource:'GV',desc:'Søt og krydret med kanel, nellik og appelsin. Varm og fyldig gløgg fra Wachau. Mer kos enn vinopplevelse.',note:'',rating:0,updatedAt:1}
 ];
 
 /* ── FILTER + SORT ── */
@@ -1484,8 +1474,7 @@ function renderModal(w, editMode=false){
       <div style="flex:1;"><div style="${IL}">Kilde</div><select id="ed-src" style="${IS}">${srcOpts}</select></div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <div style="flex:1;"><div style="${IL}">VMP-nr</div><input id="ed-vmpid" value="${w.vmpId||''}" style="${IS}"/></div>
-      <div style="flex:1;"><div style="${IL}">Vivino-hash</div><input id="ed-vivino" value="${w.vivinoHash||''}" style="${IS}"/></div>
+      <div style="flex:1;"><div style="${IL}">Vinmonopolet</div><input id="ed-vmpid" value="${w.vmpId||''}" style="${IS}"/></div>
     </div>
     <div style="${IL}margin-top:4px;">Min vurdering (1–6 stjerner)</div>
     <div class="stars6-edit" id="modal-stars" style="margin-bottom:8px;"></div>
@@ -1512,9 +1501,9 @@ function renderModal(w, editMode=false){
   `;
 
   const actionBtns = editMode ? `
+    <button class="action-btn red" onclick="confirmDelete(${w.id})">🗑 Slett vin</button>
+    <button class="action-btn" style="margin-left:auto;" onclick="cancelEdit(${w.id})">Avbryt</button>
     <button class="action-btn green" id="edit-save-btn" onclick="saveEdit(${w.id})">Lagre</button>
-    <button class="action-btn" onclick="cancelEdit(${w.id})">Avbryt</button>
-    <button class="action-btn red" style="margin-left:auto;" onclick="confirmDelete(${w.id})">🗑 Slett vin</button>
   ` : `
     ${harBtn}${bestillBtn}
     <button class="action-btn blue" onclick="openEditMode(${w.id})">✎ Rediger</button>
@@ -1553,7 +1542,7 @@ function renderModal(w, editMode=false){
 /* Re-render the modal in edit mode while preserving any unsaved field values in the form.
  * Needed when something outside the form changes and the modal
  * needs to reflect that without losing the user's in-progress text edits. */
-const EDIT_FIELD_IDS = ['ed-name','ed-grape','ed-region','ed-type','ed-price','ed-taste','ed-desc','ed-score','ed-src','ed-vmpid','ed-vivino','modal-note','ed-presentation'];
+const EDIT_FIELD_IDS = ['ed-name','ed-grape','ed-region','ed-type','ed-price','ed-taste','ed-desc','ed-score','ed-src','ed-vmpid','modal-note','ed-presentation'];
 /* Read selected food chips from a chip container by id. Returns array of canonical names. */
 function readFoodChips(containerId){
   const c=document.getElementById(containerId); if(!c) return [];
@@ -1631,8 +1620,6 @@ async function saveEdit(wineId, closeAfter=false){
   w.expertScore  = score ? parseInt(score) : null;
   w.expertSource = fv('ed-src') || 'GV';
   const vmpNew=fv('ed-vmpid'); w.vmpId=vmpNew||null;
-  const vivRaw=fv('ed-vivino');
-  if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);w.vivinoHash=m?m[1]:vivRaw;}else w.vivinoHash=null;
   // note: use raw value (not trimmed) to preserve whitespace
   w.note   = document.getElementById('modal-note')?.value ?? w.note;
   // presentation: same — preserve whitespace and line breaks
@@ -1923,7 +1910,6 @@ function toggleManualForm(){
         <select id="nw-type"><option value="red">Rødvin</option><option value="white">Hvitvin</option><option value="rose">Rosévin</option><option value="other">Andre</option></select>
       </div>
       <div class="form-row"><input id="nw-price" type="number" placeholder="Pris (kr)"/><input id="nw-vmpid" placeholder="VMP-nr"/></div>
-      <div class="form-row"><input id="nw-vivino" placeholder="Vivino-hash (for bilde)"/></div>
       <div class="form-row"><input id="nw-taste" placeholder="Smak"/></div>
       <div style="font-size:10px;font-weight:600;color:#aaa;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Mat</div>
       <div id="nw-food-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;padding:8px;border:1px solid #e4dfd6;border-radius:8px;background:#fff;">
@@ -2156,8 +2142,6 @@ async function addManualWine(){
 }
 
 async function commitManualWine(name, vmpIdRaw){
-  const vivRaw=document.getElementById('nw-vivino').value.trim();let vivinoHash=null;
-  if(vivRaw){const m=vivRaw.match(/thumbs\/([^_]+)/);vivinoHash=m?m[1]:vivRaw;}
   const score=document.getElementById('nw-score').value;
   const prof=window._vmpProfile||{};
   const food=readFoodChips('nw-food-chips');
@@ -2170,7 +2154,6 @@ async function commitManualWine(name, vmpIdRaw){
     priceDate: nowLabel(),
     priceUpdatedAt: Date.now(),
     vmpId:  vmpIdRaw,
-    vivinoHash,
     taste:  document.getElementById('nw-taste').value.trim()||'—',
     food,
     expertScore:  score?parseInt(score):null,
@@ -2242,9 +2225,13 @@ async function startAuthenticatedSession(user){
  * en edit på vinen med .id=5 lager en NY entry /wines/5 i stedet for å
  * oppdatere den originale på /wines/3. Resultat: duplikat + edits "forsvinner".
  *
- * Idempotent: skriver bare tilbake hvis noe faktisk er feilkeyet.
- * Dedup-sikker: hvis det allerede finnes to entries med samme .id (typisk
- * pga. denne bug-en), beholdes den med nyest updatedAt.
+ * I tillegg stripper denne funksjonen bort feltet `vivinoHash` fra alle viner
+ * — vi støtter ikke Vivino-bilder lenger, så feltet er død data.
+ *
+ * Idempotent: skriver bare tilbake hvis noe faktisk er feilkeyet ELLER har
+ * gammelt vivinoHash-felt.
+ * Dedup-sikker: hvis det finnes to entries med samme .id, beholdes den med
+ * nyest updatedAt.
  *
  * Merk: dette dedup'er på .id-feltet, IKKE på navn. Bevisste duplikater
  * (laget via "Lagre duplikat"-knappen) har forskjellige .id-er og blir
@@ -2256,9 +2243,16 @@ async function normalizeWinesStructureIfNeeded(snap){
   const normalized = {};
   let needsRewrite = false;
   let duplicatesFound = 0;
+  let vivinoStripped = 0;
 
   const handleEntry = (key, wine) => {
     if(!wine || wine.id == null) return;
+    // Strip vivinoHash (død data etter Vivino-fjerning)
+    if('vivinoHash' in wine){
+      delete wine.vivinoHash;
+      vivinoStripped++;
+      needsRewrite = true;
+    }
     // Key mismatch?
     if(String(key) !== String(wine.id)) needsRewrite = true;
     // Duplicate .id? Behold den nyeste.
@@ -2281,7 +2275,7 @@ async function normalizeWinesStructureIfNeeded(snap){
   }
 
   if(needsRewrite){
-    console.log(`[firebase] normaliserer wines-struktur (duplikater funnet: ${duplicatesFound})`);
+    console.log(`[firebase] normaliserer wines-struktur (duplikater: ${duplicatesFound}, vivinoHash strippet: ${vivinoStripped})`);
     pendingWrites++; refreshBadge();
     try{
       await fbDb.ref('wines').set(normalized);
