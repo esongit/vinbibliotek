@@ -1793,6 +1793,9 @@ window.addEventListener('popstate', () => {
     }
     // View-mode: lukk modal helt (uendret oppførsel — kan ikke være dirty her).
     doCloseModalNoHistory();
+    // Re-anker så neste tilbake-trykk fortsatt fanges av popstate-handleren
+    // (i stedet for å forlate dokumentet).
+    pushAnchor();
     return;
   }
   // At root — re-anchor so device back can't leave the app
@@ -2336,7 +2339,12 @@ function startUnauthenticatedSession(){
 }
 
 async function init(){
-  pushAnchor(); // back-button-anker så enheten ikke kan navigere bort fra appen
+  // To ankere ved oppstart slik at brukeren ikke kan navigere ut av appen via
+  // tilbake-knappen. Første tilbake-trykk popper én anker, popstate fyrer og
+  // pusher en ny — så vi forblir på samme side uansett hvor mange tilbake-trykk
+  // brukeren spammer. Bouncing-teknikken som mange single-page apps bruker.
+  pushAnchor();
+  pushAnchor();
   // Lytt på auth-state. Denne fyrer umiddelbart med eksisterende session (eller null)
   // og deretter hver gang brukeren logger inn/ut.
   fbAuth.onAuthStateChanged(async user => {
