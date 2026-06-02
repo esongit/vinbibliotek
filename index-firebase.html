@@ -776,7 +776,7 @@ function detachListeners(){
 async function pushWineToFirebase(wine){
   pendingWrites++; refreshBadge();
   try{
-    await fbDb.ref('wines/' + wine.id).set(wine);
+    await fbDb.ref('wines/' + wine.id).update(wine);
   }catch(e){
     console.error('[firebase] save wine failed', e);
     setSyncBadge('err','⚠ '+String(e.message||'lagring feilet').slice(0,60));
